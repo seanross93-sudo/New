@@ -290,13 +290,50 @@ const MONTHS = [
 ];
 
 
+/* ---------- side quests ---------- */
+const CHEF_QUEST = {title:"Learn to cook like a chef", area:"food", tiers:[
+  ["Commis","Foundations", [
+    ["c1","Master the pinch grip and hone your knife before every cook"],
+    ["c2","Dice an onion properly, then julienne a carrot"],
+    ["c3","Full mise en place, everything prepped before the heat goes on, for a week"],
+    ["c4","Season as you go: taste and adjust salt and acid at every stage"],
+    ["c5","Perfect rice and pasta: properly salted water, cooked al dente"],
+    ["c6","Eggs five ways: boiled, poached, scrambled, fried and a folded omelette"]]],
+  ["Chef de partie","Core techniques", [
+    ["p1","Make a stock from scratch, chicken or vegetable"],
+    ["p2","Sear a steak to the doneness you want, checked with a thermometer"],
+    ["p3","Build a pan sauce: deglaze, reduce, finish with butter"],
+    ["p4","Roast a whole chicken with crisp skin, then carve it"],
+    ["p5","Emulsify a vinaigrette and a mayonnaise by hand"],
+    ["p6","Braise low and slow: short ribs or a proper ragù"],
+    ["p7","Make béchamel and hollandaise, two of the mother sauces"]]],
+  ["Sous chef","Craft", [
+    ["s1","Make fresh pasta by hand"],
+    ["s2","Bake a loaf of bread from flour, water, salt and yeast"],
+    ["s3","Make shortcrust pastry and blind-bake a tart"],
+    ["s4","Cook a fish fillet with crisp skin"],
+    ["s5","Fix a dull dish by balancing salt, fat, acid and heat"],
+    ["s6","Plate a dish like a restaurant would"]]],
+  ["Head chef","Mastery", [
+    ["h1","Cook without a recipe for a whole week"],
+    ["h2","Recreate a favourite restaurant dish at home"],
+    ["h3","Invent an original dish and write the recipe down"],
+    ["h4","Cook a three-course dinner for family or friends"]]]
+]};
+function questSteps(q){
+  if (q.builtin === "chef") return CHEF_QUEST.tiers.flatMap(([t,sub,st]) => st.map(([id,label]) => ({id, label, tier:t, sub})));
+  return (q.steps || []).map(x => ({id:x.id, label:x.label}));
+}
+const questTitle = q => q.builtin === "chef" ? CHEF_QUEST.title : q.title;
+const questArea = q => q.builtin === "chef" ? CHEF_QUEST.area : (q.area || "feel");
+
 /* ---------- game content ---------- */
 const STATS = {gym:["STR","Strength"], food:["FUEL","Nourishment"], read:["WIS","Wisdom"], fam:["HRT","Heart"], biz:["HSTL","Hustle"],
   calm:["CALM","Calm"], home:["ORD","Order"], less:["FREE","Freedom"], look:["STY","Style"], feel:["VIT","Vitality"]};
 const TITLES = [[1,"Day One"],[3,"Starter"],[5,"Apprentice"],[8,"Regular"],[11,"Committed"],[15,"Disciplined"],[20,"Relentless"],[25,"Unstoppable"],[30,"Transformed"],[36,"Legend"]];
 const BOSSES = ["The Snooze Goblin","The Doomscroll Wraith","The Takeaway Troll","The Clutter Hydra","The Couch Golem","The Impulse-Buy Imp",
   "The Procrastination Dragon","The Sugar Siren","The Excuse Ogre","The Overthinking Owl","The Late-Night Lich","The Comfort-Zone Kraken"];
-const XP = {habit:10, bounty:10, perfect:50, checkin:5, grat:5, letgo:3, mtask:40, review:60, book:100, weigh:10, lift:10, pb:25, income:20, boss:150};
+const XP = {habit:10, bounty:10, perfect:50, checkin:5, grat:5, letgo:3, mtask:40, review:60, book:100, weigh:10, lift:10, pb:25, income:20, boss:150, qstep:50, qdone:300};
 const BADGE_ICON = {
   star:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.2l7.1-.6z"/></svg>',
   flame:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1 4 5 6 5 11a5 5 0 01-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-3-1-6 1-9.5z"/></svg>',
@@ -340,7 +377,11 @@ const BADGES = [
   ["month","Month mastered","Finish all four monthly focus tasks","pen",c=>[c.monthsDone,1]],
   ["boss1","Boss slayer","Defeat a weekly boss","sword",c=>[c.bosses,1]],
   ["boss10","Monster hunter","Defeat 10 weekly bosses","sword",c=>[c.bosses,10]],
-  ["lvl10","Double digits","Reach level 10","star",c=>[c.level,10]]
+  ["lvl10","Double digits","Reach level 10","star",c=>[c.level,10]],
+  ["commis","Commis chef","Finish the Commis tier of the chef quest","pan",c=>[c.chefTier[0]||0,6]],
+  ["sous","Sous chef","Finish the Sous chef tier","pan",c=>[c.chefTier[2]||0,6]],
+  ["headchef","Head chef","Complete Learn to cook like a chef","pan",c=>[c.chefDone,23]],
+  ["quest1","Questor","Complete any side quest","sword",c=>[c.questsDone,1]]
 ];
 
 const ICONS = {
@@ -370,7 +411,8 @@ function defaultProfile(){
   AREAS.forEach(a => { areas[a.id] = {goal:a.goal, habits:a.habits.map(([id,label]) => ({id,label}))}; });
   return {
     startDate: todayStr(), name:"", why:"In one year I want to be fitter, calmer, closer to my family and living with less.",
-    currency:"£", unit:"kg", areas, monthTasks:{}, books:[], weights:[], lifts:[], income:[], reviews:{}
+    currency:"£", unit:"kg", areas, monthTasks:{}, books:[], weights:[], lifts:[], income:[], reviews:{},
+    quests:[{id:"chef", builtin:"chef", done:{}}]
   };
 }
 function normalize(p){
@@ -379,6 +421,8 @@ function normalize(p){
   out.areas = Object.assign({}, d.areas, (p && p.areas) || {});
   ["books","weights","lifts","income"].forEach(k => { if (!Array.isArray(out[k])) out[k] = []; });
   ["monthTasks","reviews"].forEach(k => { if (!out[k] || typeof out[k] !== "object") out[k] = {}; });
+  if (!Array.isArray(out.quests)) out.quests = [{id:"chef", builtin:"chef", done:{}}];
+  out.quests.forEach(q => { if (!q.done || typeof q.done !== "object") q.done = {}; });
   return out;
 }
 
@@ -524,15 +568,20 @@ function game(){
   p.lifts.slice().sort((a,b) => a.d < b.d ? -1 : 1).forEach(l => { const k = l.ex.trim().toLowerCase(); if (best[k] !== undefined && Number(l.w) > best[k]) pbs++; best[k] = Math.max(best[k] ?? -Infinity, Number(l.w)); });
   xp += p.lifts.length*XP.lift + pbs*XP.pb; area.gym += p.lifts.length*XP.lift + pbs*XP.pb;
   const inc = income(); xp += p.income.length*XP.income; area.biz += p.income.length*XP.income;
+  let questsDone = 0, chefDone = 0; const chefTier = [0,0,0,0];
+  p.quests.forEach(q => { const st = questSteps(q), n = st.filter(x => q.done[x.id]).length, g = n*XP.qstep + (st.length && n === st.length ? XP.qdone : 0);
+    xp += g; if (area[questArea(q)] !== undefined) area[questArea(q)] += g; if (st.length && n === st.length) questsDone++;
+    if (q.builtin === "chef"){ chefDone = n; CHEF_QUEST.tiers.forEach(([,, ss], i) => chefTier[i] = ss.filter(([id]) => q.done[id]).length); } });
   let bosses = 0; const t = todayStr();
   for (let m = mondayOf(p.startDate); diffDays(m, t) >= 0; m = addDays(m, 7)) if (weekBoss(m).down) bosses++;
   xp += bosses*XP.boss;
   const st = streaks(), level = levelFor(xp);
-  const ctx = {ticks, perfect, best:st.best, count, pbs, books, sales:p.income.length, income:inc, letgo, reviews, monthsDone, bosses, level};
+  const ctx = {ticks, perfect, best:st.best, count, pbs, books, sales:p.income.length, income:inc, letgo, reviews, monthsDone, bosses, level, questsDone, chefDone, chefTier};
   const badges = BADGES.map(([id,name,desc,icon,fn]) => { const [have, need] = fn(ctx); return {id, name, desc, icon, have:Math.min(have, need), need, got: have >= need}; });
   let today = 0; { const d = day(t), h = d.h || {}, b = bounties(t);
     Object.keys(h).forEach(id => { if (h[id]) today += XP.habit + (b.has(id) ? XP.bounty : 0); });
-    if (allHabits().length && score(t) >= 1) today += XP.perfect; if (d.mood || d.energy) today += XP.checkin; if ((d.grat||"").trim()) today += XP.grat; today += (Number(d.letgo)||0)*XP.letgo; }
+    if (allHabits().length && score(t) >= 1) today += XP.perfect; if (d.mood || d.energy) today += XP.checkin; if ((d.grat||"").trim()) today += XP.grat; today += (Number(d.letgo)||0)*XP.letgo;
+    p.quests.forEach(q => Object.values(q.done).forEach(v => { if (v === t) today += XP.qstep; })); }
   return {xp, level, title:titleFor(level), area, badges, st, bosses, today};
 }
 
@@ -570,7 +619,7 @@ function checkGame(x, y){
     const fresh = g.badges.filter(b => b.got && !had.has(b.id));
     if (g.level > lastGame.level){
       confetti();
-      showOverlay(`<div class="medal"><div><small>LEVEL</small><span>${g.level}</span></div></div><h2>Level up</h2><p>You're now <b>${esc(g.title)}</b>.</p>${fresh.length ? `<p class="muted">Badge unlocked: ${fresh.map(b => esc(b.name)).join(", ")}</p>` : ""}`);
+      showOverlay(`<div class="medal"><div><small>LEVEL</small><span>${g.level}</span></div></div><h2>Level up</h2>${g.title !== lastGame.title ? `<p>New title: <b>${esc(g.title)}</b></p>` : (() => { const nx = TITLES.find(t => t[0] > g.level); return nx ? `<p class="muted">Next title, <b>${esc(nx[1])}</b>, at level ${nx[0]}.</p>` : ""; })()}${fresh.length ? `<p class="muted">Badge unlocked: ${fresh.map(b => esc(b.name)).join(", ")}</p>` : ""}`);
     } else if (fresh.length){ confetti(); toast("Badge unlocked: " + fresh.map(b => b.name).join(", ")); }
     else if (g.bosses > lastGame.bosses){ confetti(); toast("Boss defeated! +" + XP.boss + " XP"); }
   }
@@ -648,6 +697,11 @@ function viewToday(){
       <div class="phase-l">${PHASES.map((p,i) => `<span class="${i === pi ? "cur" : ""}">${p.name}</span>`).join("")}</div>
     </div>
   </section>
+
+  ${(() => { const act = P().quests.map(q => ({q, nx: questSteps(q).find(x => !q.done[x.id])})).filter(o => o.nx);
+    return act.length ? `<section class="card"><div class="row between"><div class="eyebrow">Side quest${act.length > 1 ? "s" : ""} · next step</div><button class="btn small ghost" data-act="goquests">Quest log</button></div>
+    ${act.map(({q, nx}) => `<div class="stack" style="gap:2px"><h3>${esc(questTitle(q))}${nx.tier ? ` <span class="muted mono" style="font-size:.72rem;font-weight:500">${esc(nx.tier.toUpperCase())}</span>` : ""}</h3>
+      <button class="check" data-act="qstep" data-q="${esc(q.id)}" data-s="${esc(nx.id)}" aria-pressed="false"><span class="box">${TICK}</span><span class="t">${esc(nx.label)}<span class="bounty">+${XP.qstep} XP</span></span></button></div>`).join("")}</section>` : ""; })()}
 
   <section class="card boss ${boss.down ? "down" : ""}">
     <div class="row between"><div class="eyebrow">Weekly boss</div><span class="mono" style="font-size:.8rem;color:var(--boss);font-weight:700">${boss.down ? "Defeated" : (boss.hp - boss.dmg) + " HP left"}</span></div>
@@ -857,6 +911,27 @@ function viewHero(){
     <div class="row between"><h2>Badges</h2><span class="mono muted" style="font-size:.85rem">${got} unlocked</span></div>
     <div class="badges">${g.badges.filter(b => b.got).map(badge).join("")}${g.badges.filter(b => !b.got).sort((a,b) => b.have/b.need - a.have/a.need).map(badge).join("")}</div>
   </section>
+  <section class="card" id="quests">
+    <div class="row between"><h2>Side quests</h2><span class="muted" style="font-size:.85rem">Big goals, one step at a time</span></div>
+    ${P().quests.map(q => { const st = questSteps(q), n = st.filter(x => q.done[x.id]).length, pct = st.length ? Math.round(n/st.length*100) : 0;
+      const groups = []; st.forEach(x => { const k = x.tier || ""; let gp = groups.find(g => g.k === k); if (!gp){ gp = {k, sub:x.sub, items:[]}; groups.push(gp); } gp.items.push(x); });
+      return `<details class="card area-card" data-area="q-${esc(q.id)}" style="background:var(--bg)">
+        <summary><span class="tag">${esc(STATS[questArea(q)]?.[0] || "QUEST")}</span><h3>${esc(questTitle(q))}</h3><span class="mono muted" style="font-size:.8rem;margin-left:auto">${n}/${st.length}</span><span class="chev" aria-hidden="true">›</span></summary>
+        <div class="bigbar" role="img" aria-label="${pct}% complete"><b style="width:${pct}%"></b></div>
+        ${n === st.length && st.length ? `<p style="color:var(--sun);font-weight:700">Quest complete. +${XP.qdone} XP bonus earned.</p>` : ""}
+        ${groups.map(gp => `<div class="stack" style="gap:0">${gp.k ? `<div class="eyebrow" style="margin-top:6px">${esc(gp.k)} · ${esc(gp.sub)} · ${gp.items.filter(x => q.done[x.id]).length}/${gp.items.length}</div>` : ""}
+          ${gp.items.map(x => `<button class="check ${q.done[x.id] ? "on" : ""}" data-act="qstep" data-q="${esc(q.id)}" data-s="${esc(x.id)}" aria-pressed="${!!q.done[x.id]}"><span class="box">${TICK}</span><span class="t">${esc(x.label)}${q.done[x.id] ? ` <span class="mono muted" style="font-size:.7rem">${esc(fmtShort(q.done[x.id]))}</span>` : ""}</span></button>`).join("")}</div>`).join("")}
+        ${ui.confirmQuest === q.id ? `<div class="confirm"><p><b>Remove this side quest?</b> Its progress and XP go with it.</p><div class="row"><button class="btn small danger" data-act="delquest" data-q="${esc(q.id)}">Remove quest</button><button class="btn small" data-act="askdelquest" data-q="">Keep it</button></div></div>`
+          : `<div><button class="btn small ghost danger" data-act="askdelquest" data-q="${esc(q.id)}">Remove quest</button></div>`}
+      </details>`; }).join("")}
+    <div class="stack" style="gap:8px;border-top:1px solid var(--line);padding-top:12px">
+      <span class="eyebrow">Start a new side quest</span>
+      <input type="text" id="q-title" placeholder="Quest name, e.g. Run a 10k">
+      <select id="q-area" aria-label="Which stat it levels up">${AREAS.map(a => `<option value="${a.id}">${STATS[a.id][1]} · ${esc(a.name)}</option>`).join("")}</select>
+      <textarea id="q-steps" placeholder="One step per line&#10;Run 3k without stopping&#10;Run 5k&#10;Book a 10k race"></textarea>
+      <div><button class="btn small primary" data-act="addquest">Start quest</button></div>
+    </div>
+  </section>
   <section class="card">
     <h2>How to earn XP</h2>
     <div class="xptable">
@@ -873,6 +948,7 @@ function viewHero(){
       <span>Log a lift · beat a personal best</span><span>+${XP.lift} · +${XP.pb}</span>
       <span>Weigh-in</span><span>+${XP.weigh}</span>
       <span>Side-hustle income entry</span><span>+${XP.income}</span>
+      <span>Side-quest step · finish a whole quest</span><span>+${XP.qstep} · +${XP.qdone}</span>
     </div>
     <p class="muted" style="font-size:.85rem">Keep a 7-day streak to earn a streak freeze (hold up to 2). A freeze automatically covers one missed day so your streak survives.</p>
   </section>`;
@@ -920,6 +996,14 @@ main.addEventListener("click", e => {
     case "addlift": { const ex = val("l-ex"), w = parseFloat(val("l-w")), r = parseInt(val("l-r"), 10); if (!ex || !isFinite(w) || !isFinite(r)) { toast("Add an exercise, weight and reps"); return; } p.lifts.push({id:uid36(), d:todayStr(), ex, w, r}); markDirty("profile"); toast("Set logged"); break; }
     case "dellift": p.lifts = p.lifts.filter(x => x.id !== b.dataset.id); markDirty("profile"); break;
     case "addincome": { const src = val("i-src") || "Income", v = parseFloat(val("i-v")); if (!isFinite(v)) { toast("Enter an amount"); return; } p.income.push({id:uid36(), d:todayStr(), src, v}); markDirty("profile"); toast("Income added"); break; }
+    case "qstep": { const q = p.quests.find(x => x.id === b.dataset.q); if (!q) return; const k = b.dataset.s;
+      if (q.done[k]) delete q.done[k]; else q.done[k] = todayStr(); markDirty("profile"); break; }
+    case "goquests": ui.tab = "hero"; checkGame(); render(); { const d = main.querySelector('details[data-area^="q-"]'); if (d) d.open = true; document.getElementById("quests")?.scrollIntoView(); } return;
+    case "askdelquest": ui.confirmQuest = b.dataset.q || null; break;
+    case "delquest": p.quests = p.quests.filter(x => x.id !== b.dataset.q); ui.confirmQuest = null; markDirty("profile"); toast("Side quest removed"); break;
+    case "addquest": { const title = val("q-title"), steps = (document.getElementById("q-steps")?.value || "").split("\n").map(x => x.trim()).filter(Boolean);
+      if (!title || !steps.length){ toast("Add a quest name and at least one step"); return; }
+      p.quests.push({id:uid36(), title, area:val("q-area") || "feel", steps:steps.map(label => ({id:uid36(), label})), done:{}}); markDirty("profile"); toast("Side quest started"); break; }
     case "delincome": p.income = p.income.filter(x => x.id !== b.dataset.id); markDirty("profile"); break;
     case "export": {
       const txt = JSON.stringify(state); const box = document.getElementById("export-box");
