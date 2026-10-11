@@ -218,6 +218,18 @@ nav.tabs button.act{color:var(--accent);background:var(--accent-soft)}
 .overlay{position:fixed;inset:0;z-index:40;background:color-mix(in srgb, var(--ink) 55%, transparent);display:grid;place-items:center;padding:16px}
 .overlay .card{max-width:340px;width:100%;text-align:center;align-items:center;gap:10px;padding:24px}
 #confetti{position:fixed;inset:0;pointer-events:none;z-index:41}
+.pet-row{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center}
+.habitat{border:0;padding:0;border-radius:16px;background:linear-gradient(var(--accent-soft) 72%, var(--h1) 72%);display:block;line-height:0;cursor:pointer}
+.sprite{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
+.bubble{position:relative;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:9px 12px;font-size:.92rem;line-height:1.35}
+.bubble::before{content:"";position:absolute;left:-7px;top:16px;width:12px;height:12px;background:var(--bg);border-left:1px solid var(--line);border-bottom:1px solid var(--line);transform:rotate(45deg)}
+.evo{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.evo div{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;font-size:.68rem;color:var(--muted);min-width:0}
+.evo div.cur{color:var(--accent);font-weight:700}
+.evo canvas{width:100%;max-width:56px;height:auto;aspect-ratio:1;border-radius:10px;background:var(--bg)}
+.evo div.cur canvas{background:var(--accent-soft)}
+.heartfx{position:fixed;z-index:30;pointer-events:none;color:#E2557A;font-size:1.1rem;animation:floatup 1s ease-out forwards}
+@media (prefers-reduced-motion: reduce){.heartfx{animation:none;opacity:0}}
 @media (prefers-reduced-motion: reduce){.floatxp{animation:none;opacity:0}}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
@@ -412,7 +424,7 @@ function defaultProfile(){
   return {
     startDate: todayStr(), name:"", why:"In one year I want to be fitter, calmer, closer to my family and living with less.",
     currency:"£", unit:"kg", areas, monthTasks:{}, books:[], weights:[], lifts:[], income:[], reviews:{},
-    quests:[{id:"chef", builtin:"chef", done:{}}]
+    quests:[{id:"chef", builtin:"chef", done:{}}], spriteName:"Pip"
   };
 }
 function normalize(p){
@@ -585,6 +597,105 @@ function game(){
   return {xp, level, title:titleFor(level), area, badges, st, bosses, today};
 }
 
+
+/* ---------- sprite companion: 32×32 pixel art drawn procedurally, evolves with level ---------- */
+const EVOS = [[1,"Egg"],[3,"Hatchling"],[6,"Sprout"],[11,"Bloom"],[20,"Guardian"],[30,"Ascended"]];
+const stageFor = L => EVOS.reduce((a, e, i) => L >= e[0] ? i : a, 0);
+const ACCESSORY = {food:"chef", read:"glasses", gym:"band"};
+const PAL = {O:"#2A1E2E", shell:"#F4EBD8", spot:"#E0A458", body:"#7BD389", shade:"#4FA36A", hi:"#BDF2C6",
+  gold:"#F4C64E", gshade:"#D3922A", ghi:"#FFE9A6", white:"#FFFFFF", cheek:"#F28CA0", leaf:"#3E8E4E",
+  petal:"#F7A1C4", wing:"#CFE9FF", wingO:"#6C93B8", halo:"#FFD84A", red:"#E2453C", sil:"#9AA59F"};
+function drawSprite(cv, t){
+  const st = +cv.dataset.stage, mood = cv.dataset.mood || "neutral", acc = cv.dataset.acc || "", sil = cv.dataset.sil === "1";
+  const x = cv.getContext("2d"); x.clearRect(0,0,32,32);
+  const C = c => sil ? PAL.sil : c;
+  const px = (X,Y,c) => { x.fillStyle = C(c); x.fillRect(X|0, Y|0, 1, 1); };
+  const rect = (X,Y,w,h,c) => { x.fillStyle = C(c); x.fillRect(X|0, Y|0, w, h); };
+  const ell = (cx,cy,rx,ry,c) => { x.fillStyle = C(c); for (let Y = Math.floor(cy-ry); Y <= cy+ry; Y++) for (let X = Math.floor(cx-rx); X <= cx+rx; X++) { const dx = (X+.5-cx)/rx, dy = (Y+.5-cy)/ry; if (dx*dx+dy*dy <= 1) x.fillRect(X, Y, 1, 1); } };
+  const oell = (cx,cy,rx,ry,c) => { ell(cx,cy,rx+1,ry+1,PAL.O); ell(cx,cy,rx,ry,c); };
+  const anim = !sil && t != null;
+  const bob = anim && Math.floor(t/450) % 2 ? -1 : 0;
+  const blink = anim && (t % 3600) < 160;
+  const gold = st === 5, B = gold ? PAL.gold : PAL.body, S = gold ? PAL.gshade : PAL.shade, H = gold ? PAL.ghi : PAL.hi;
+  rect(9, 30, 14, 1, "rgba(0,0,0,.18)");
+  if (st === 0){
+    const w = anim && (t % 2400) < 300 ? (Math.floor(t/100) % 2 ? 1 : -1) : 0;
+    oell(16+w, 19, 7, 9.5, PAL.shell);
+    [[13,14],[18,17],[14,22],[19,23],[16,11]].forEach(([a,b]) => px(a+w, b, PAL.spot));
+    px(12+w,15,PAL.white); px(12+w,16,PAL.white);
+    if (+cv.dataset.level >= 2){ [[14,18],[15,19],[16,18],[17,19],[18,18]].forEach(([a,b]) => px(a+w, b, PAL.O)); }
+    return;
+  }
+  const geo = [null,{cy:22,rx:7,ry:6},{cy:21,rx:8,ry:7.5},{cy:20,rx:9,ry:8.5},{cy:20,rx:9,ry:8.5},{cy:19.5,rx:9.5,ry:9}][st];
+  const cx = 16, cy = geo.cy + bob, top = Math.round(cy - geo.ry);
+  // wings behind the body
+  if (st >= 4){ const flap = anim && Math.floor(t/300) % 2 ? 1 : 0, wr = st === 5 ? 6 : 4.5;
+    oell(cx-geo.rx-1, cy-3-flap, wr, 3.5, PAL.wing); oell(cx+geo.rx+1, cy-3-flap, wr, 3.5, PAL.wing);
+    px(cx-geo.rx-3, cy-3-flap, PAL.wingO); px(cx+geo.rx+3, cy-3-flap, PAL.wingO); }
+  // ears and tail
+  if (st >= 3){ [-1, 1].forEach(sd => { const ex = cx + sd*5;
+      for (let i = 0; i < 4; i++) rect(ex - i - 1, top - 3 + i, i*2 + 3, 1, PAL.O);
+      for (let i = 0; i < 3; i++) rect(ex - i, top - 2 + i, i*2 + 1, 1, S); });
+    oell(cx+geo.rx+1, cy+3, 2.5, 2, S); }
+  oell(cx, cy, geo.rx, geo.ry, B);
+  ell(cx, cy+geo.ry*.45, geo.rx*.75, geo.ry*.45, H);
+  ell(cx-geo.rx+2.5, cy-geo.ry+3, 1.2, 1.2, H);
+  // feet
+  if (st >= 2){ rect(cx-5, Math.round(cy+geo.ry), 3, 1, S); rect(cx+2, Math.round(cy+geo.ry), 3, 1, S); }
+  // hatchling still wears its shell
+  if (st === 1){ const sy = Math.round(cy+2); rect(cx-8, sy+1, 17, 6, PAL.O); rect(cx-7, sy+1, 15, 5, PAL.shell);
+    for (let X = cx-7; X <= cx+7; X += 2) px(X, sy, PAL.shell); for (let X = cx-7; X <= cx+7; X++) if ((X - cx) % 2) px(X, sy+1, PAL.O); px(cx-4, sy+3, PAL.spot); px(cx+3, sy+4, PAL.spot); }
+  // face
+  const ey = Math.round(cy - (st === 1 ? 2 : 2)), el = cx-4, er = cx+2;
+  if (blink || mood === "sleepy"){ rect(el, ey+1, 2, 1, PAL.O); rect(er, ey+1, 2, 1, PAL.O); }
+  else if (mood === "happy"){ [el, er].forEach(X => { px(X, ey+1, PAL.O); px(X+1, ey, PAL.O); px(X+2, ey+1, PAL.O); }); }
+  else { [el, er].forEach(X => { rect(X, ey, 2, 2, PAL.O); px(X, ey, PAL.white); }); }
+  px(el-1, ey+2, PAL.cheek); px(er+2, ey+2, PAL.cheek);
+  const my = ey + 3;
+  if (mood === "happy"){ px(cx-2, my, PAL.O); rect(cx-1, my+1, 2, 1, PAL.O); px(cx+1, my, PAL.O); }
+  else if (mood === "sleepy"){ px(cx-1, my+1, PAL.O); px(cx, my+1, PAL.O); }
+  else rect(cx-1, my, 2, 1, PAL.O);
+  // headwear: chef hat replaces the leaf; otherwise sprout leaf → flower → crown
+  if (st >= 2 && acc === "chef"){ oell(cx-3, top-2, 2.2, 2.2, PAL.white); oell(cx+3, top-2, 2.2, 2.2, PAL.white); oell(cx, top-3.5, 2.8, 2.8, PAL.white);
+    ell(cx-3, top-2, 2.2, 2.2, PAL.white); ell(cx, top-3.5, 2.8, 2.8, PAL.white); rect(cx-5, top-1, 11, 2, PAL.white); rect(cx-5, top+1, 11, 1, PAL.O); }
+  else if (st === 2){ px(cx, top-1, PAL.leaf); px(cx, top-2, PAL.leaf); ell(cx+2, top-3, 2, 1.1, PAL.leaf); ell(cx-2, top-2, 1.5, 1, PAL.leaf); }
+  else if (st >= 3){ const fl = (X,Y) => { [[0,-1.5],[1.5,0],[0,1.5],[-1.5,0]].forEach(([a,b]) => ell(X+a, Y+b, 1.2, 1.2, PAL.petal)); px(X, Y, PAL.gold); };
+    px(cx, top-1, PAL.leaf); fl(cx, top-3); if (st >= 4){ fl(cx-5, top); fl(cx+5, top); } }
+  if (st >= 2 && acc === "glasses"){ [el, er].forEach(X => { rect(X-1, ey-1, 4, 1, PAL.O); rect(X-1, ey+2, 4, 1, PAL.O); rect(X-1, ey-1, 1, 4, PAL.O); rect(X+2, ey-1, 1, 4, PAL.O); }); rect(el+3, ey, 1, 1, PAL.O); }
+  if (st >= 2 && acc === "band"){ const by = top + 3; for (let X = cx-geo.rx+1; X <= cx+geo.rx-1; X++) px(X, by, PAL.red); px(cx+geo.rx, by+1, PAL.red); px(cx+geo.rx+1, by+2, PAL.red); }
+  // ascended halo and sparkles
+  if (st === 5){ const hy = top - 7; rect(cx-4, hy, 9, 1, PAL.halo); rect(cx-5, hy+1, 1, 1, PAL.halo); rect(cx+5, hy+1, 1, 1, PAL.halo); rect(cx-4, hy+2, 9, 1, PAL.halo);
+    if (anim){ const k = Math.floor(t/250) % 4; [[4,8],[27,10],[6,24],[26,22]].forEach(([a,b], i) => { if ((i + k) % 2){ px(a, b, PAL.halo); px(a-1, b, PAL.ghi); px(a+1, b, PAL.ghi); px(a, b-1, PAL.ghi); px(a, b+1, PAL.ghi); } }); } }
+  if (mood === "sleepy" && anim && !sil){ const z = Math.floor(t/600) % 3; x.fillStyle = PAL.wingO; [[24,10],[26,7],[28,4]].slice(0, z+1).forEach(([a,b]) => { x.fillRect(a,b,3,1); x.fillRect(a+1,b+1,1,1); x.fillRect(a,b+2,3,1); }); }
+  if (mood === "happy" && anim && Math.floor(t/500) % 2){ px(5, 12, PAL.halo); px(27, 14, PAL.halo); }
+}
+function spriteState(g){
+  const sc = score(todayStr()), hr = new Date().getHours();
+  const mood = sc >= .6 ? "happy" : sc === 0 && (hr >= 21 || hr < 7) ? "sleepy" : "neutral";
+  const top = Object.entries(g.area).sort((a,b) => b[1] - a[1])[0];
+  return {stage: stageFor(g.level), mood, acc: top && top[1] >= 200 ? (ACCESSORY[top[0]] || "") : ""};
+}
+function spriteCanvas(g, size, extra = ""){
+  const ss = spriteState(g);
+  return `<canvas class="sprite" data-sprite width="32" height="32" data-stage="${ss.stage}" data-mood="${ss.mood}" data-acc="${ss.acc}" data-level="${g.level}" style="width:${size}px;height:${size}px" ${extra}></canvas>`;
+}
+function spriteLine(g){
+  const t = todayStr(), sc = score(t), hs = allHabits(), done = hs.filter(x => (day(t).h || {})[x.id]).length, nm = P().spriteName || "Pip";
+  const st = stageFor(g.level), nx = EVOS[st+1];
+  if (st === 0 && g.xp === 0) return "Something is moving inside the egg. Tick a habit to warm it up.";
+  if (sc === 0) return st === 0 ? "The egg is cold today. A few ticks will warm it up." : "I'm hungry for XP. Tick a habit and feed me?";
+  if (sc < .5) return `Good start! ${Math.ceil(hs.length*.5) - done} more and today's streak is safe.`;
+  if (sc < 1) return nx ? `Streak safe! Reach level ${nx[0]} and I'll evolve into a ${nx[1]}.` : "Streak safe! Go for a perfect day?";
+  return "A perfect day! I feel incredible.";
+}
+const PETS = ["Hehe, that tickles!","We're doing this together.","Every tick makes me stronger.","Small steps, every day.","I believe in you.","Water break? I'm thirsty too.","You showed up today. That's the hard part."];
+let spriteTimer = null;
+function tickSprites(){
+  const t = performance.now();
+  document.querySelectorAll("canvas[data-sprite]").forEach(cv => drawSprite(cv, matchMedia("(prefers-reduced-motion: reduce)").matches ? null : t));
+}
+function startSprites(){ tickSprites(); if (!spriteTimer && !matchMedia("(prefers-reduced-motion: reduce)").matches) spriteTimer = setInterval(() => { if (!document.hidden) tickSprites(); }, 100); }
+
 /* ---------- celebration ---------- */
 let lastGame = null;
 function renderLevel(g){
@@ -617,7 +728,12 @@ function checkGame(x, y){
     floatXP(g.xp - lastGame.xp, x, y);
     const had = new Set(lastGame.badges.filter(b => b.got).map(b => b.id));
     const fresh = g.badges.filter(b => b.got && !had.has(b.id));
-    if (g.level > lastGame.level){
+    if (stageFor(g.level) > stageFor(lastGame.level)){
+      confetti();
+      const nm = esc(P().spriteName || "Pip"), sn = EVOS[stageFor(g.level)][1];
+      showOverlay(`${spriteCanvas(g, 160)}<div class="eyebrow">Level ${g.level}</div><h2>${nm} evolved into a ${sn}!</h2><p class="muted">${sn === "Hatchling" ? "It hatched! Keep feeding it XP." : "Your habits made this happen."}</p>`);
+      tickSprites();
+    } else if (g.level > lastGame.level){
       confetti();
       showOverlay(`<div class="medal"><div><small>LEVEL</small><span>${g.level}</span></div></div><h2>Level up</h2>${g.title !== lastGame.title ? `<p>New title: <b>${esc(g.title)}</b></p>` : (() => { const nx = TITLES.find(t => t[0] > g.level); return nx ? `<p class="muted">Next title, <b>${esc(nx[1])}</b>, at level ${nx[0]}.</p>` : ""; })()}${fresh.length ? `<p class="muted">Badge unlocked: ${fresh.map(b => esc(b.name)).join(", ")}</p>` : ""}`);
     } else if (fresh.length){ confetti(); toast("Badge unlocked: " + fresh.map(b => b.name).join(", ")); }
@@ -695,6 +811,16 @@ function viewToday(){
     <div class="stack" style="gap:5px">
       <div class="phases">${PHASES.map((p,i) => `<div class="phase"><b style="transform:scaleX(${phaseFill(i)})"></b></div>`).join("")}</div>
       <div class="phase-l">${PHASES.map((p,i) => `<span class="${i === pi ? "cur" : ""}">${p.name}</span>`).join("")}</div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="pet-row">
+      <button class="habitat" data-act="pet" aria-label="Pet ${esc(P().spriteName || "Pip")}">${spriteCanvas(g, 104)}</button>
+      <div class="stack" style="gap:8px;min-width:0">
+        <div class="eyebrow">${esc(P().spriteName || "Pip")} · ${EVOS[stageFor(g.level)][1]}</div>
+        <div class="bubble" id="bubble">${esc(spriteLine(g))}</div>
+      </div>
     </div>
   </section>
 
@@ -888,6 +1014,19 @@ function viewHero(){
   const next = TITLES.find(t => t[0] > g.level);
   const badge = b => `<div class="bdg ${b.got ? "" : "locked"}"><span class="ic">${BADGE_ICON[b.icon]}</span><b>${esc(b.name)}</b><p>${esc(b.desc)}</p>${b.got ? "" : `<span class="prog">${b.have.toLocaleString()} / ${b.need.toLocaleString()}</span>`}</div>`;
   return `
+  <section class="card">
+    <div class="pet-row">
+      <button class="habitat" data-act="pet" aria-label="Pet ${esc(P().spriteName || "Pip")}">${spriteCanvas(g, 128)}</button>
+      <div class="stack" style="gap:6px;min-width:0">
+        <div class="eyebrow">Your companion</div>
+        <h2>${esc(P().spriteName || "Pip")} the ${EVOS[stageFor(g.level)][1]}</h2>
+        <p class="muted" style="font-size:.88rem">${EVOS[stageFor(g.level)+1] ? `Evolves at level ${EVOS[stageFor(g.level)+1][0]}.` : "Fully evolved."} Its headwear matches your strongest stat.</p>
+        <label class="f"><span>Name</span><input type="text" data-in="set" data-k="spriteName" value="${esc(P().spriteName || "Pip")}" maxlength="16"></label>
+      </div>
+    </div>
+    <div class="evo">${EVOS.map(([lv, nm], i) => `<div class="${i === stageFor(g.level) ? "cur" : ""}"><canvas class="sprite" data-sprite width="32" height="32" data-stage="${i}" data-mood="happy" data-level="2" data-sil="${i > stageFor(g.level) ? 1 : 0}"></canvas><span>${i > stageFor(g.level) ? "LV " + lv : nm}</span></div>`).join("")}</div>
+  </section>
+
   <section class="hero-lvl" style="padding-top:6px">
     <div class="medal"><div><small>LEVEL</small><span>${g.level}</span></div></div>
     <div class="stack" style="gap:8px;min-width:0">
@@ -964,6 +1103,7 @@ function render(){
   open.forEach(a => { const d = main.querySelector(`details[data-area="${a}"]`); if (d) d.open = true; });
   document.getElementById("tabs").innerHTML = TABS.map(([k,l]) => `<button class="${ui.tab === k ? "act" : ""}" data-tab="${k}" aria-current="${ui.tab === k ? "page" : "false"}">${ICONS[k]}<span>${l}</span></button>`).join("");
   window.scrollTo(0, y);
+  tickSprites();
   if (ui.tab === "year"){ const hw = main.querySelector(".heat-wrap"), td = main.querySelector(".heat .today"); if (hw && td) hw.scrollLeft = Math.max(0, td.offsetLeft - hw.clientWidth/2); }
 }
 
@@ -996,6 +1136,11 @@ main.addEventListener("click", e => {
     case "addlift": { const ex = val("l-ex"), w = parseFloat(val("l-w")), r = parseInt(val("l-r"), 10); if (!ex || !isFinite(w) || !isFinite(r)) { toast("Add an exercise, weight and reps"); return; } p.lifts.push({id:uid36(), d:todayStr(), ex, w, r}); markDirty("profile"); toast("Set logged"); break; }
     case "dellift": p.lifts = p.lifts.filter(x => x.id !== b.dataset.id); markDirty("profile"); break;
     case "addincome": { const src = val("i-src") || "Income", v = parseFloat(val("i-v")); if (!isFinite(v)) { toast("Enter an amount"); return; } p.income.push({id:uid36(), d:todayStr(), src, v}); markDirty("profile"); toast("Income added"); break; }
+    case "pet": {
+      const bub = document.getElementById("bubble"); if (bub) bub.textContent = PETS[Math.floor(Math.random()*PETS.length)];
+      if (e.clientX && !matchMedia("(prefers-reduced-motion: reduce)").matches){ const h = document.createElement("div"); h.className = "heartfx"; h.textContent = "♥"; h.style.left = e.clientX + "px"; h.style.top = (e.clientY - 20) + "px"; document.body.appendChild(h); setTimeout(() => h.remove(), 1000); }
+      return;
+    }
     case "qstep": { const q = p.quests.find(x => x.id === b.dataset.q); if (!q) return; const k = b.dataset.s;
       if (q.done[k]) delete q.done[k]; else q.done[k] = todayStr(); markDirty("profile"); break; }
     case "goquests": ui.tab = "hero"; checkGame(); render(); { const d = main.querySelector('details[data-area^="q-"]'); if (d) d.open = true; document.getElementById("quests")?.scrollIntoView(); } return;
@@ -1059,6 +1204,7 @@ main.addEventListener("keydown", e => {
 document.addEventListener("visibilitychange", () => { if (document.hidden) flush(); else if (ui.date !== todayStr() && ui.tab === "today") { ui.date = todayStr(); render(); } });
 
 render();
+startSprites();
 connect();
 })();
 </script>
