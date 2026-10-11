@@ -229,6 +229,14 @@ nav.tabs button.act{color:var(--accent);background:var(--accent-soft)}
 .evo canvas{width:100%;max-width:56px;height:auto;aspect-ratio:1;border-radius:10px;background:var(--bg)}
 .evo div.cur canvas{background:var(--accent-soft)}
 .heartfx{position:fixed;z-index:30;pointer-events:none;color:#E2557A;font-size:1.1rem;animation:floatup 1s ease-out forwards}
+.item{display:flex;align-items:flex-start;gap:6px}
+.item > .check{flex:1;min-width:0}
+.gbtn{flex:none;border:1px solid var(--line);background:var(--surface);color:var(--accent);border-radius:999px;font-size:.72rem;font-weight:700;padding:3px 10px;margin-top:6px;white-space:nowrap}
+.gbtn[aria-expanded="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.guide{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:0 0 8px 32px;font-size:.88rem;line-height:1.45}
+.guide ol{margin:0;padding-left:1.15rem;display:flex;flex-direction:column;gap:5px}
+.guide .tip{margin-top:8px;color:var(--muted)}
+@media (max-width:420px){.guide{margin-left:0}}
 @media (prefers-reduced-motion: reduce){.heartfx{animation:none;opacity:0}}
 @media (prefers-reduced-motion: reduce){.floatxp{animation:none;opacity:0}}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
@@ -342,7 +350,7 @@ const questArea = q => q.builtin === "chef" ? CHEF_QUEST.area : (q.area || "feel
 /* ---------- game content ---------- */
 const STATS = {gym:["STR","Strength"], food:["FUEL","Nourishment"], read:["WIS","Wisdom"], fam:["HRT","Heart"], biz:["HSTL","Hustle"],
   calm:["CALM","Calm"], home:["ORD","Order"], less:["FREE","Freedom"], look:["STY","Style"], feel:["VIT","Vitality"]};
-const TITLES = [[1,"Day One"],[3,"Starter"],[5,"Apprentice"],[8,"Regular"],[11,"Committed"],[15,"Disciplined"],[20,"Relentless"],[25,"Unstoppable"],[30,"Transformed"],[36,"Legend"]];
+const TITLES = [[1,"Nobody"],[3,"Peasant"],[5,"Stable Hand"],[8,"Squire"],[11,"Man-at-Arms"],[15,"Sellsword"],[20,"Sworn Sword"],[25,"Knight"],[30,"Lord"],[36,"Warlord"]];
 const BOSSES = ["The Snooze Goblin","The Doomscroll Wraith","The Takeaway Troll","The Clutter Hydra","The Couch Golem","The Impulse-Buy Imp",
   "The Procrastination Dragon","The Sugar Siren","The Excuse Ogre","The Overthinking Owl","The Late-Night Lich","The Comfort-Zone Kraken"];
 const XP = {habit:10, bounty:10, perfect:50, checkin:5, grat:5, letgo:3, mtask:40, review:60, book:100, weigh:10, lift:10, pb:25, income:20, boss:150, qstep:50, qdone:300};
@@ -598,103 +606,118 @@ function game(){
 }
 
 
-/* ---------- sprite companion: 32×32 pixel art drawn procedurally, evolves with level ---------- */
-const EVOS = [[1,"Egg"],[3,"Hatchling"],[6,"Sprout"],[11,"Bloom"],[20,"Guardian"],[30,"Ascended"]];
+/* ---------- companion: a 32×32 pixel hero who rises from beggar boy to warlord as you level up ---------- */
+const EVOS = [
+  [1,"Beggar Boy","Born with nothing. Sleeps in the straw."],
+  [3,"Stable Boy","Mucks out the stables and dreams of swords."],
+  [6,"Squire","Polishes a knight's armour and learns the blade."],
+  [11,"Sellsword","Fights for coin and answers to no one."],
+  [20,"Knight","Sworn, armoured and carrying your house colours."],
+  [30,"Warlord","Commands armies. The whole realm knows the name."]
+];
 const stageFor = L => EVOS.reduce((a, e, i) => L >= e[0] ? i : a, 0);
-const ACCESSORY = {food:"chef", read:"glasses", gym:"band"};
-const PAL = {O:"#2A1E2E", shell:"#F4EBD8", spot:"#E0A458", body:"#7BD389", shade:"#4FA36A", hi:"#BDF2C6",
-  gold:"#F4C64E", gshade:"#D3922A", ghi:"#FFE9A6", white:"#FFFFFF", cheek:"#F28CA0", leaf:"#3E8E4E",
-  petal:"#F7A1C4", wing:"#CFE9FF", wingO:"#6C93B8", halo:"#FFD84A", red:"#E2453C", sil:"#9AA59F"};
+const HOUSE = {gym:["#B3362B","Crimson"], food:["#C8702A","Ember"], read:["#2F5D9E","Azure"], fam:["#B4527A","Rose"], biz:["#C9A227","Gold"],
+  calm:["#2E8C86","Teal"], home:["#7A5634","Oak"], less:["#6E7378","Ash"], look:["#6B4C9A","Violet"], feel:["#3F8A4A","Forest"]};
+const PAL = {O:"#1E1A1D", skin:"#E9B98F", skinS:"#C98E66", hair:"#5A3A22", hairD:"#3B2414", rag:"#8B6B4A", ragS:"#6E5236", patch:"#B39468",
+  tunic:"#6E7550", trou:"#5B4636", boot:"#3A2A20", wood:"#A0703C", woodD:"#6E4824", gamb:"#D8CBA8", gambS:"#B5A784",
+  leather:"#6B4630", leatherS:"#4E3222", stud:"#D9C07E", steel:"#C3CCD3", steelS:"#8E99A2", steelD:"#5F6A73", mail:"#9AA3AA",
+  gold:"#E7B93E", fur:"#ECE6DA", furS:"#B9B1A3", white:"#FFFFFF", cheek:"#E58C8C", dirt:"#9C7A5A", sil:"#9AA59F", zz:"#6C93B8"};
 function drawSprite(cv, t){
-  const st = +cv.dataset.stage, mood = cv.dataset.mood || "neutral", acc = cv.dataset.acc || "", sil = cv.dataset.sil === "1";
+  const st = +cv.dataset.stage, mood = cv.dataset.mood || "neutral", house = cv.dataset.house || HOUSE.home[0], sil = cv.dataset.sil === "1";
   const x = cv.getContext("2d"); x.clearRect(0,0,32,32);
+  const anim = !sil && t != null, blink = anim && (t % 3600) < 160;
+  let oy = 0;
   const C = c => sil ? PAL.sil : c;
-  const px = (X,Y,c) => { x.fillStyle = C(c); x.fillRect(X|0, Y|0, 1, 1); };
-  const rect = (X,Y,w,h,c) => { x.fillStyle = C(c); x.fillRect(X|0, Y|0, w, h); };
-  const ell = (cx,cy,rx,ry,c) => { x.fillStyle = C(c); for (let Y = Math.floor(cy-ry); Y <= cy+ry; Y++) for (let X = Math.floor(cx-rx); X <= cx+rx; X++) { const dx = (X+.5-cx)/rx, dy = (Y+.5-cy)/ry; if (dx*dx+dy*dy <= 1) x.fillRect(X, Y, 1, 1); } };
-  const oell = (cx,cy,rx,ry,c) => { ell(cx,cy,rx+1,ry+1,PAL.O); ell(cx,cy,rx,ry,c); };
-  const anim = !sil && t != null;
-  const bob = anim && Math.floor(t/450) % 2 ? -1 : 0;
-  const blink = anim && (t % 3600) < 160;
-  const gold = st === 5, B = gold ? PAL.gold : PAL.body, S = gold ? PAL.gshade : PAL.shade, H = gold ? PAL.ghi : PAL.hi;
-  rect(9, 30, 14, 1, "rgba(0,0,0,.18)");
-  if (st === 0){
-    const w = anim && (t % 2400) < 300 ? (Math.floor(t/100) % 2 ? 1 : -1) : 0;
-    oell(16+w, 19, 7, 9.5, PAL.shell);
-    [[13,14],[18,17],[14,22],[19,23],[16,11]].forEach(([a,b]) => px(a+w, b, PAL.spot));
-    px(12+w,15,PAL.white); px(12+w,16,PAL.white);
-    if (+cv.dataset.level >= 2){ [[14,18],[15,19],[16,18],[17,19],[18,18]].forEach(([a,b]) => px(a+w, b, PAL.O)); }
-    return;
-  }
-  const geo = [null,{cy:22,rx:7,ry:6},{cy:21,rx:8,ry:7.5},{cy:20,rx:9,ry:8.5},{cy:20,rx:9,ry:8.5},{cy:19.5,rx:9.5,ry:9}][st];
-  const cx = 16, cy = geo.cy + bob, top = Math.round(cy - geo.ry);
-  // wings behind the body
-  if (st >= 4){ const flap = anim && Math.floor(t/300) % 2 ? 1 : 0, wr = st === 5 ? 6 : 4.5;
-    oell(cx-geo.rx-1, cy-3-flap, wr, 3.5, PAL.wing); oell(cx+geo.rx+1, cy-3-flap, wr, 3.5, PAL.wing);
-    px(cx-geo.rx-3, cy-3-flap, PAL.wingO); px(cx+geo.rx+3, cy-3-flap, PAL.wingO); }
-  // ears and tail
-  if (st >= 3){ [-1, 1].forEach(sd => { const ex = cx + sd*5;
-      for (let i = 0; i < 4; i++) rect(ex - i - 1, top - 3 + i, i*2 + 3, 1, PAL.O);
-      for (let i = 0; i < 3; i++) rect(ex - i, top - 2 + i, i*2 + 1, 1, S); });
-    oell(cx+geo.rx+1, cy+3, 2.5, 2, S); }
-  oell(cx, cy, geo.rx, geo.ry, B);
-  ell(cx, cy+geo.ry*.45, geo.rx*.75, geo.ry*.45, H);
-  ell(cx-geo.rx+2.5, cy-geo.ry+3, 1.2, 1.2, H);
-  // feet
-  if (st >= 2){ rect(cx-5, Math.round(cy+geo.ry), 3, 1, S); rect(cx+2, Math.round(cy+geo.ry), 3, 1, S); }
-  // hatchling still wears its shell
-  if (st === 1){ const sy = Math.round(cy+2); rect(cx-8, sy+1, 17, 6, PAL.O); rect(cx-7, sy+1, 15, 5, PAL.shell);
-    for (let X = cx-7; X <= cx+7; X += 2) px(X, sy, PAL.shell); for (let X = cx-7; X <= cx+7; X++) if ((X - cx) % 2) px(X, sy+1, PAL.O); px(cx-4, sy+3, PAL.spot); px(cx+3, sy+4, PAL.spot); }
+  const rect = (X,Y,w,h,c) => { x.fillStyle = C(c); x.fillRect(X, Y+oy, w, h); };
+  const px = (X,Y,c) => rect(X,Y,1,1,c);
+  const orect = (X,Y,w,h,c) => { rect(X-1,Y-1,w+2,h+2,PAL.O); rect(X,Y,w,h,c); };
+  const ell = (cx,cy,rx,ry,c,maxY = 99) => { for (let Y = Math.floor(cy-ry); Y <= Math.min(cy+ry, maxY); Y++) for (let X = Math.floor(cx-rx); X <= cx+rx; X++) { const dx = (X+.5-cx)/rx, dy = (Y+.5-cy)/ry; if (dx*dx+dy*dy <= 1) px(X, Y, c); } };
+  x.fillStyle = sil ? "rgba(0,0,0,.08)" : "rgba(0,0,0,.18)"; x.fillRect(8, 30, 17, 1);
+  oy = anim && Math.floor(t/520) % 2 ? -1 : 0;
+
+  const torso = [PAL.rag, PAL.tunic, PAL.gamb, PAL.leather, PAL.mail, PAL.steel][st];
+  const sleeve = torso;
+  // cloak behind everything (sellsword and up)
+  if (st >= 3){ orect(10, 16, 13, 12, st === 5 ? PAL.O : house); if (st === 5){ rect(10, 16, 13, 12, house); rect(10, 16, 13, 12, "rgba(0,0,0,.35)"); } }
+  // weapon behind the right hand
+  if (st === 1){ rect(22,5,3,25,PAL.O); rect(23,6,1,23,PAL.wood); rect(20,4,7,1,PAL.steelD); [21,23,25].forEach(X => rect(X,1,1,3,PAL.steelD)); }
+  if (st === 2){ rect(22,7,3,17,PAL.O); rect(23,8,1,15,PAL.wood); orect(21,21,5,1,PAL.woodD); }
+  if (st === 3 || st === 4){ const top = st === 3 ? 6 : 3; rect(22,top,3,22-top,PAL.O); rect(23,top+1,1,20-top,PAL.steel); orect(21,21,5,1,PAL.steelD); px(23,25,PAL.gold); }
+  if (st === 5){ rect(22,0,4,23,PAL.O); rect(23,1,2,21,PAL.steel); rect(23,1,1,21,PAL.white); orect(20,21,7,1,PAL.gold); px(23,25,PAL.gold); px(24,25,PAL.gold);
+    if (anim){ const g = Math.floor(t/90) % 40; if (g < 20) px(24, 2+g, PAL.white); } }
+  // legs and feet
+  const legC = st === 0 ? PAL.skin : st >= 4 ? PAL.steelS : PAL.trou;
+  [13,17].forEach(X => { orect(X, 24, 3, 5, legC);
+    if (st === 0){ rect(X, 24, 3, 2, PAL.ragS); }
+    else rect(X, st >= 2 ? 26 : 27, 3, st >= 2 ? 3 : 2, st >= 4 ? PAL.steelD : PAL.boot); });
+  // torso
+  orect(12, 16, 9, 9, torso);
+  if (st === 0){ rect(13,18,2,2,PAL.patch); rect(18,21,2,2,PAL.patch); for (let X = 12; X <= 20; X += 2) px(X, 25, PAL.rag); }
+  if (st === 1){ rect(12,21,9,1,PAL.rope); }
+  if (st === 2){ [18,20].forEach(Y => rect(13,Y,7,1,PAL.gambS)); rect(12,22,9,1,PAL.leather); px(16,22,PAL.gold); }
+  if (st === 3){ for (let i = 0; i < 8; i++) px(13+i, 16+i, PAL.leatherS); [[14,19],[18,19],[15,22],[19,22]].forEach(([a,b]) => px(a,b,PAL.stud)); rect(12,22,9,1,PAL.leatherS); px(13,16,PAL.gold); px(19,16,PAL.gold); }
+  if (st === 4){ for (let Y = 17; Y <= 23; Y += 2) for (let X = 13; X <= 19; X += 2) px(X, Y, PAL.steelD); rect(14,16,5,9,house); px(16,19,PAL.gold); rect(15,20,3,1,PAL.gold); px(16,21,PAL.gold); rect(12,22,9,1,PAL.leatherS); }
+  if (st === 5){ rect(12,16,2,9,PAL.steelS); rect(15,18,3,2,PAL.white); rect(12,22,9,1,PAL.leatherS); px(16,22,PAL.gold); }
+  // arms with hands (cuff line falls out of the outline)
+  [10,21].forEach(X => { orect(X, 22, 2, 2, st >= 4 ? PAL.steelD : PAL.skin); orect(X, 17, 2, 5, st === 0 ? PAL.skin : sleeve); if (st === 0) rect(X, 17, 2, 2, PAL.rag); });
+  // pauldrons and fur mantle
+  if (st === 4){ orect(9,15,4,3,PAL.steel); orect(20,15,4,3,PAL.steel); }
+  if (st === 5){ rect(8,13,17,5,PAL.O); rect(9,14,15,3,PAL.fur); for (let X = 9; X <= 23; X += 2) px(X, 17, PAL.fur); [[11,15],[15,14],[19,15],[22,14]].forEach(([a,b]) => px(a,b,PAL.furS)); }
+  // head
+  ell(16.5, 11, 6.5, 6, PAL.O); ell(16.5, 11, 5.5, 5, PAL.skin);
+  // hair, helmet or crown
+  if (st === 4){ ell(16.5, 10, 6.5, 5.5, PAL.O, 9); ell(16.5, 10, 5.5, 4.5, PAL.steel, 9); rect(11,9,11,1,PAL.steelD); rect(16,9,1,3,PAL.steelS); }
+  else { ell(16.5, 9, 6.5, 4.5, PAL.O, 8); ell(16.5, 9, 5.5, 3.5, st === 5 ? PAL.hairD : PAL.hair, 8);
+    [12,13,15,19,20].forEach(X => px(X, 9, st === 5 ? PAL.hairD : PAL.hair));
+    if (st === 0){ px(13,4,PAL.hairD); px(14,3,PAL.hairD); px(19,4,PAL.hairD); px(20,10,PAL.hair); }
+    if (st >= 3){ px(11,10,PAL.hair); px(11,11,PAL.hair); px(21,10,PAL.hair); px(21,11,PAL.hair); } }
+  if (st === 5){ rect(11,4,11,4,PAL.O); rect(12,5,9,2,PAL.gold); [12,16,20].forEach(X => { rect(X-1,1,3,4,PAL.O); rect(X,2,1,3,PAL.gold); }); rect(12,5,9,2,PAL.gold); px(16,5,house); }
   // face
-  const ey = Math.round(cy - (st === 1 ? 2 : 2)), el = cx-4, er = cx+2;
-  if (blink || mood === "sleepy"){ rect(el, ey+1, 2, 1, PAL.O); rect(er, ey+1, 2, 1, PAL.O); }
-  else if (mood === "happy"){ [el, er].forEach(X => { px(X, ey+1, PAL.O); px(X+1, ey, PAL.O); px(X+2, ey+1, PAL.O); }); }
-  else { [el, er].forEach(X => { rect(X, ey, 2, 2, PAL.O); px(X, ey, PAL.white); }); }
-  px(el-1, ey+2, PAL.cheek); px(er+2, ey+2, PAL.cheek);
-  const my = ey + 3;
-  if (mood === "happy"){ px(cx-2, my, PAL.O); rect(cx-1, my+1, 2, 1, PAL.O); px(cx+1, my, PAL.O); }
-  else if (mood === "sleepy"){ px(cx-1, my+1, PAL.O); px(cx, my+1, PAL.O); }
-  else rect(cx-1, my, 2, 1, PAL.O);
-  // headwear: chef hat replaces the leaf; otherwise sprout leaf → flower → crown
-  if (st >= 2 && acc === "chef"){ oell(cx-3, top-2, 2.2, 2.2, PAL.white); oell(cx+3, top-2, 2.2, 2.2, PAL.white); oell(cx, top-3.5, 2.8, 2.8, PAL.white);
-    ell(cx-3, top-2, 2.2, 2.2, PAL.white); ell(cx, top-3.5, 2.8, 2.8, PAL.white); rect(cx-5, top-1, 11, 2, PAL.white); rect(cx-5, top+1, 11, 1, PAL.O); }
-  else if (st === 2){ px(cx, top-1, PAL.leaf); px(cx, top-2, PAL.leaf); ell(cx+2, top-3, 2, 1.1, PAL.leaf); ell(cx-2, top-2, 1.5, 1, PAL.leaf); }
-  else if (st >= 3){ const fl = (X,Y) => { [[0,-1.5],[1.5,0],[0,1.5],[-1.5,0]].forEach(([a,b]) => ell(X+a, Y+b, 1.2, 1.2, PAL.petal)); px(X, Y, PAL.gold); };
-    px(cx, top-1, PAL.leaf); fl(cx, top-3); if (st >= 4){ fl(cx-5, top); fl(cx+5, top); } }
-  if (st >= 2 && acc === "glasses"){ [el, er].forEach(X => { rect(X-1, ey-1, 4, 1, PAL.O); rect(X-1, ey+2, 4, 1, PAL.O); rect(X-1, ey-1, 1, 4, PAL.O); rect(X+2, ey-1, 1, 4, PAL.O); }); rect(el+3, ey, 1, 1, PAL.O); }
-  if (st >= 2 && acc === "band"){ const by = top + 3; for (let X = cx-geo.rx+1; X <= cx+geo.rx-1; X++) px(X, by, PAL.red); px(cx+geo.rx, by+1, PAL.red); px(cx+geo.rx+1, by+2, PAL.red); }
-  // ascended halo and sparkles
-  if (st === 5){ const hy = top - 7; rect(cx-4, hy, 9, 1, PAL.halo); rect(cx-5, hy+1, 1, 1, PAL.halo); rect(cx+5, hy+1, 1, 1, PAL.halo); rect(cx-4, hy+2, 9, 1, PAL.halo);
-    if (anim){ const k = Math.floor(t/250) % 4; [[4,8],[27,10],[6,24],[26,22]].forEach(([a,b], i) => { if ((i + k) % 2){ px(a, b, PAL.halo); px(a-1, b, PAL.ghi); px(a+1, b, PAL.ghi); px(a, b-1, PAL.ghi); px(a, b+1, PAL.ghi); } }); } }
-  if (mood === "sleepy" && anim && !sil){ const z = Math.floor(t/600) % 3; x.fillStyle = PAL.wingO; [[24,10],[26,7],[28,4]].slice(0, z+1).forEach(([a,b]) => { x.fillRect(a,b,3,1); x.fillRect(a+1,b+1,1,1); x.fillRect(a,b+2,3,1); }); }
-  if (mood === "happy" && anim && Math.floor(t/500) % 2){ px(5, 12, PAL.halo); px(27, 14, PAL.halo); }
+  const sleepy = blink || mood === "sleepy";
+  if (st === 5){ rect(13,13,7,3,PAL.hairD); rect(14,16,5,1,PAL.hairD); }
+  if (sleepy){ rect(13,12,2,1,PAL.O); rect(18,12,2,1,PAL.O); }
+  else if (mood === "happy"){ [13,17].forEach(X => { px(X,12,PAL.O); px(X+1,11,PAL.O); px(X+2,12,PAL.O); }); }
+  else { rect(14,11,1,2,PAL.O); rect(18,11,1,2,PAL.O); }
+  if (st >= 3 && !sleepy && mood !== "happy"){ rect(13,10,3,1,PAL.hairD); rect(17,10,3,1,PAL.hairD); }
+  if (st <= 2){ px(12,13,PAL.cheek); px(20,13,PAL.cheek); }
+  if (st === 0) px(20,12,PAL.dirt);
+  if (st === 3){ [14,16,18].forEach(X => px(X,15,PAL.skinS)); }
+  const mc = st === 5 ? PAL.skinS : PAL.O;
+  if (mood === "happy"){ px(15,14,mc); px(17,14,mc); px(16,15,mc); }
+  else if (mood === "sleepy") px(16,14,mc);
+  else rect(15,14,3,1,mc);
+  // flourishes
+  oy = 0;
+  if (mood === "sleepy" && anim){ const z = Math.floor(t/600) % 3; x.fillStyle = PAL.zz; [[2,9],[4,6],[6,3]].slice(0, z+1).forEach(([a,b]) => { x.fillRect(a,b,3,1); x.fillRect(a+1,b+1,1,1); x.fillRect(a,b+2,3,1); }); }
+  if (mood === "happy" && anim && Math.floor(t/500) % 2){ x.fillStyle = PAL.gold; x.fillRect(4,12,1,1); x.fillRect(3,13,3,1); x.fillRect(4,14,1,1); }
 }
 function spriteState(g){
   const sc = score(todayStr()), hr = new Date().getHours();
   const mood = sc >= .6 ? "happy" : sc === 0 && (hr >= 21 || hr < 7) ? "sleepy" : "neutral";
   const top = Object.entries(g.area).sort((a,b) => b[1] - a[1])[0];
-  return {stage: stageFor(g.level), mood, acc: top && top[1] >= 200 ? (ACCESSORY[top[0]] || "") : ""};
+  const hk = top && top[1] > 0 ? top[0] : "home";
+  return {stage: stageFor(g.level), mood, house: HOUSE[hk][0], houseName: HOUSE[hk][1], houseStat: STATS[hk][1], earned: !!(top && top[1] > 0)};
 }
 function spriteCanvas(g, size, extra = ""){
   const ss = spriteState(g);
-  return `<canvas class="sprite" data-sprite width="32" height="32" data-stage="${ss.stage}" data-mood="${ss.mood}" data-acc="${ss.acc}" data-level="${g.level}" style="width:${size}px;height:${size}px" ${extra}></canvas>`;
+  return `<canvas class="sprite" data-sprite width="32" height="32" data-stage="${ss.stage}" data-mood="${ss.mood}" data-house="${ss.house}" style="width:${size}px;height:${size}px" ${extra}></canvas>`;
 }
 function spriteLine(g){
-  const t = todayStr(), sc = score(t), hs = allHabits(), done = hs.filter(x => (day(t).h || {})[x.id]).length, nm = P().spriteName || "Pip";
+  const t = todayStr(), sc = score(t), hs = allHabits(), done = hs.filter(x => (day(t).h || {})[x.id]).length;
   const st = stageFor(g.level), nx = EVOS[st+1];
-  if (st === 0 && g.xp === 0) return "Something is moving inside the egg. Tick a habit to warm it up.";
-  if (sc === 0) return st === 0 ? "The egg is cold today. A few ticks will warm it up." : "I'm hungry for XP. Tick a habit and feed me?";
-  if (sc < .5) return `Good start! ${Math.ceil(hs.length*.5) - done} more and today's streak is safe.`;
-  if (sc < 1) return nx ? `Streak safe! Reach level ${nx[0]} and I'll evolve into a ${nx[1]}.` : "Streak safe! Go for a perfect day?";
-  return "A perfect day! I feel incredible.";
+  if (g.xp === 0) return "I've nothing but the rags on my back. Tick a habit and let's begin.";
+  if (sc === 0) return st === 0 ? "No bread yet today. A few ticks and I'll find my feet." : "The training yard is empty today. Tick a habit and I'll pick up my sword.";
+  if (sc < .5) return `Good start. ${Math.ceil(hs.length*.5) - done} more and today's streak holds.`;
+  if (sc < 1) return nx ? `The streak holds! Reach level ${nx[0]} and I'll rise to ${nx[1]}.` : "The streak holds. Go for a perfect day?";
+  return "A perfect day. They'll sing songs about this one.";
 }
-const PETS = ["Hehe, that tickles!","We're doing this together.","Every tick makes me stronger.","Small steps, every day.","I believe in you.","Water break? I'm thirsty too.","You showed up today. That's the hard part."];
+const PETS = ["Every lord started in the mud.","Steel is forged one strike at a time.","Hold the line. One more habit.","I'd march into battle for you.","Eat, train, rest. Repeat.","Small victories win wars.","A sword is only as sharp as its daily practice.","The realm wasn't won in a day."];
 let spriteTimer = null;
 function tickSprites(){
-  const t = performance.now();
-  document.querySelectorAll("canvas[data-sprite]").forEach(cv => drawSprite(cv, matchMedia("(prefers-reduced-motion: reduce)").matches ? null : t));
+  const t = performance.now(), still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  document.querySelectorAll("canvas[data-sprite]").forEach(cv => drawSprite(cv, still ? null : t));
 }
-function startSprites(){ tickSprites(); if (!spriteTimer && !matchMedia("(prefers-reduced-motion: reduce)").matches) spriteTimer = setInterval(() => { if (!document.hidden) tickSprites(); }, 100); }
+function startSprites(){ tickSprites(); if (!spriteTimer && !matchMedia("(prefers-reduced-motion: reduce)").matches) spriteTimer = setInterval(() => { if (!document.hidden) tickSprites(); }, 90); }
 
 /* ---------- celebration ---------- */
 let lastGame = null;
@@ -730,8 +753,8 @@ function checkGame(x, y){
     const fresh = g.badges.filter(b => b.got && !had.has(b.id));
     if (stageFor(g.level) > stageFor(lastGame.level)){
       confetti();
-      const nm = esc(P().spriteName || "Pip"), sn = EVOS[stageFor(g.level)][1];
-      showOverlay(`${spriteCanvas(g, 160)}<div class="eyebrow">Level ${g.level}</div><h2>${nm} evolved into a ${sn}!</h2><p class="muted">${sn === "Hatchling" ? "It hatched! Keep feeding it XP." : "Your habits made this happen."}</p>`);
+      const nm = esc(P().spriteName || "Pip"), ev = EVOS[stageFor(g.level)], was = EVOS[stageFor(lastGame.level)][1];
+      showOverlay(`${spriteCanvas(g, 160)}<div class="eyebrow">Level ${g.level} · ${esc(was)} no more</div><h2>${nm} rises as ${/^[AEIOU]/.test(ev[1]) ? "an" : "a"} ${ev[1]}!</h2><p class="muted">${ev[2]}</p>`);
       tickSprites();
     } else if (g.level > lastGame.level){
       confetti();
@@ -765,6 +788,83 @@ function spark(points, opts = {}){
     <circle cx="${xs(points.length-1)}" cy="${ys(L.v)}" r="4" fill="var(--sun)"/></svg>`;
 }
 
+/* ---------- how-to guides for anything that isn't self-explanatory ---------- */
+const GUIDES = {
+  // daily habits
+  gym1:{s:["Warm up for 5 minutes: brisk walk, bike or skipping, then a few light reps of your first exercise.","Do a full-body session: a squat, a push (press-ups or bench press), a hinge (deadlift or Romanian deadlift), a pull (rows) and a plank.","3 sets of 8–12 reps each. Pick a weight where the last 2 reps are hard but your form stays clean.","Rest 60–90 seconds between sets. The whole session takes about 45 minutes."],t:"At home with no kit: squats, press-ups, glute bridges, backpack rows and planks work fine. Short on time with a baby? 20 minutes still counts."},
+  food2:{s:["Aim for a palm-sized portion of protein at every meal.","Easy options: eggs, Greek yoghurt, cottage cheese, chicken, fish, tinned tuna, beans, lentils, tofu.","If you're training, a good daily target is about 1.6 g of protein per kg of body weight."],t:"Breakfast is where most people fall short. Eggs or Greek yoghurt with fruit fixes it."},
+  food3:{s:["One portion is 80 g, roughly a handful.","Frozen and tinned fruit and veg count just as much as fresh.","Beans and lentils count once a day, however much you eat.","Juice or smoothie counts once, up to 150 ml."],t:"Add a portion to every meal and one snack and you're there."},
+  fam1:{s:["Put your phone in another room or a drawer. The baby monitor is the one exception.","Ideas: bath time, floor play, reading to the baby, a walk with the pram, dinner together at the table.","15 minutes of full attention beats an hour half-distracted."],t:"Tell your partner what you're doing. It's easier to keep up when someone else knows."},
+  biz1:{s:["Decide the single task before you start, ideally the night before.","Set a 45-minute timer. Phone on silent and face down, notifications off.","Work on that one thing only. If an idea pops up, write it down and carry on.","When the timer goes, write down the very next step so tomorrow starts fast."],t:"Nap time or the hour after bedtime are good slots with a baby."},
+  calm1:{s:["Sit comfortably, set a 10-minute timer and close your eyes.","Breathe normally and notice each breath in and out.","When your mind wanders, and it will, notice it and come back to the breath. That moment of coming back is the exercise.","Short of time? Box breathing: in for 4, hold for 4, out for 4, hold for 4. Repeat for 2 minutes."],t:"Insight Timer is free and has guided sessions. Try one during a nap."},
+  calm2:{s:["Write for 5 minutes. No rules about grammar or neatness.","Prompts: What happened today? How do I feel? What went well? What's on my mind for tomorrow?","Finish with one line on what you'd like tomorrow to look like."],t:"Bullet points count. The habit matters more than the length."},
+  home1:{s:["Set a 15-minute timer.","Clear the kitchen: dishes washed or in the dishwasher, surfaces wiped.","Walk through the main room and put everything back where it lives.","Get tomorrow ready: bottles washed, bag packed, clothes out."],t:"Put music on and stop when the timer stops. It's a reset, not a deep clean."},
+  less1:{s:["Before buying anything that isn't food or an essential, ask: do I need it or just want it?","Use the 48-hour rule: leave it in the basket and decide in two days.","Remove saved card details from shopping sites and apps."],t:"Write down what you didn't buy and its price. Watching that number grow is very motivating."},
+  look1:{s:["Morning: a gentle cleanser, a moisturiser, then SPF 30 or higher, even when it's cloudy.","Evening: cleanse and moisturise.","Weekly: trim your nails, and tidy your beard or neckline."],t:"Three cheap, plain products used every day beat an expensive shelf you never touch."},
+
+  // monthly quests
+  "m0-0":{s:["Pick a wake-up time you can hit even after a rough night, for example 6:30.","Get up at that time every day, weekends included, even if the night was broken.","Get daylight within 30 minutes of waking. It sets your body clock."],t:"With a baby this is about an anchor time, not perfect sleep. If the baby wakes you earlier, that counts."},
+  "m0-1":{s:["iPhone: Settings, Focus, Sleep. Allow notifications only from your alarm and the baby monitor app.","Android: Settings, Digital Wellbeing, Bedtime mode. Add the monitor app to the exceptions under Do Not Disturb.","Schedule it to switch on automatically, for example from 10 pm to 6:30 am.","Turn on greyscale with bedtime mode so the screen is less tempting."],t:"Test it once: trigger a monitor alert with bedtime mode on and make sure it comes through."},
+  "m0-2":{s:["Each evening, spend 5 minutes writing tomorrow's plan.","List the 1–3 things that would make tomorrow a win.","Put the workout and side-hustle session in your calendar with a time.","Set out anything you'll need: gym kit, lunch, keys."],t:"Do it at the same moment every night, for example straight after the baby goes down."},
+  "m1-2":{s:["On Sunday, pick one or two recipes that keep for 4 days: chilli, curry, grain bowls, pasta salad.","Cook in bulk and split into 4–5 containers.","Add a fresh element on the day, such as leaves, herbs or a squeeze of lemon, so it doesn't feel tired."],t:"Freeze one or two portions so there's always a backup meal."},
+  "m2-0":{s:["Take everything out and put it on the bed. Seeing it all at once is the point.","Keep only what fits, what you've worn this year and what you'd buy again today.","Make four piles: keep, donate, sell, bin.","Hang everything back with the hangers facing backwards. Turn a hanger round when you wear the item. In 6 months, anything still backwards goes."],t:"Count everything that leaves and add it to Items let go."},
+  "m2-1":{s:["Do one cupboard at a time. Empty it completely.","Bin anything out of date, and donate gadgets you haven't used in a year.","Keep only one of each tool, unless you really use two.","Put things back by how often you use them: daily items at the front, at eye level."],t:"Clear plastic tubs for snacks and baking stop the cupboard sliding back into chaos."},
+  "m2-2":{s:["Tip the drawer out and sort it into keep, bin, and belongs somewhere else.","For paperwork: shred what you don't need and scan anything important.","Set up one tray for incoming post and clear it once a week."],t:"Keep the passports, birth certificates and the baby's red book together in one folder that's easy to grab."},
+  "m2-3":{s:["Photograph items in daylight on a plain background.","Sell larger or branded items on Vinted, eBay or Facebook Marketplace.","Donate the rest to a charity shop, or offer it free in a local group."],t:"Give anything unsold a 2-week deadline, then donate it. Don't let the sell pile become new clutter."},
+  "m3-0":{s:["Log the exercise, the weight and the reps for every set.","Use the Lifts tracker in the Areas tab, or a notes app at the gym.","Before each session, look at last time's numbers and aim to beat one of them."],t:"What gets measured gets improved. The log is where you'll see progress."},
+  "m3-1":{s:["Pick a rep range, for example 8–12.","When you hit 12 reps on every set with good form, add the smallest weight jump next time (1–2.5 kg).","The heavier weight drops you to around 8 reps. Build back up to 12, then add weight again."],t:"This is called double progression. Slow and steady adds up to a huge amount over a year."},
+  "m3-2":{s:["Pick one lift you've trained for at least 4 weeks.","Warm up properly with lighter sets first.","Aim for one more rep or a small weight increase on your usual set. You don't need to test a one-rep max.","Use a spotter or the safety bars for bench press and squats."],t:"Log it in Lifts. The app spots a new personal best automatically."},
+  "m3-3":{s:["Spend 10 minutes a day on 5 moves, for 2 minutes each:","Cat-cow for the spine, the world's greatest stretch for the hips, a deep squat hold, a doorway chest stretch, and 90/90 hip switches."],t:"Do it while the kettle boils or during a baby's floor time. Lying next to them counts."},
+  "m4-2":{s:["Check your screen time to see where the hour goes.","Put a book where the phone usually lives: on the sofa arm and the bedside table.","Move social apps off your home screen, or add a daily limit."],t:"Swap, don't ban. When you reach for the phone, reach for the book instead."},
+  "m5-0":{s:["List 5 ideas built on what you already know or enjoy.","Score each from 1 to 5 on three things: do people already pay for this, can I start it in a month, and would I enjoy it?","Pick the top scorer and commit to it for 90 days. Park the rest."],t:"Boring and proven beats clever and new. Services such as tutoring, cooking, design or repairs earn fastest."},
+  "m5-1":{s:["Describe the offer in one sentence: I help [who] get [result] by [how].","Build the smallest version someone could pay for. A simple form, a booking link or a single product is enough.","Set a price. Don't make it free."],t:"If you're not slightly embarrassed by version one, you waited too long."},
+  "m5-2":{s:["Write a short message explaining what you're offering and who it's for.","Send it personally to 20 people who might want it or know someone who does.","Ask each one directly: \"Do you know anyone who'd want this?\""],t:"Personal messages work far better than a public post at this stage."},
+  "m5-3":{s:["Follow up with everyone who showed interest.","Make paying easy: a payment link, bank transfer or PayPal.","Deliver brilliantly and ask for a testimonial."],t:"Log it under Side-hustle income. The First sale badge is waiting."},
+  "m7-0":{s:["Write down the rules before you start: food, bills, nappies and essentials only.","List the exceptions in advance, for example a birthday present.","Delete shopping apps for the month."],t:"When you want something, add it to a list with the date. Most of the urges fade."},
+  "m7-2":{s:["Go through your bank statement for recurring payments.","Highlight anything you haven't used in the last month.","Cancel at least one now, before you talk yourself out of it."],t:"Put what you save into the side-hustle pot or a savings account."},
+  "m7-3":{s:["Note what you wanted, when, and how you felt: bored, tired, stressed.","After a week, look for patterns."],t:"Most impulse buys are about a feeling, not the thing. The log shows you which feeling."},
+  "m8-0":{s:["Build up from 10 minutes: 12, then 15, then 20 over two weeks.","Use the same spot and the same time every day.","Try different styles: breath focus, body scan, or a guided session."],t:"A partly broken session still counts. Babies don't do schedules."},
+  "m8-1":{s:["Pick a day and tell people in advance.","Keep the baby monitor and calls from family. Turn everything else off: social media, news and email.","Plan the day: a walk, cooking, a book, family time."],t:"Notice how often you reach for the phone. That's the lesson."},
+  "m8-2":{s:["Write to yourself one year from now.","Cover who you are today, what you're struggling with, what you hope will have changed, and what you're proud of.","Seal it, date it, and put a reminder in your calendar for a year's time."],t:"Futureme.org will email the letter to you on a set date."},
+  "m8-3":{s:["Think of a grudge or regret you're still carrying. It can be about yourself.","Write what happened and how it affected you.","Write what letting go would look like. Forgiving doesn't mean saying it was OK.","You don't need to send anything."],t:"Forgiving yourself counts, and is often the bigger one."},
+  "m9-0":{s:["Choose 2–3 colours that go together, for example navy, grey and white.","Aim for about 30 pieces in total: tops, bottoms, a few layers, two pairs of shoes and one coat.","Every top should work with every bottom.","Fill the gaps with quality basics rather than trends."],t:"Fewer clothes that fit well look better than a full wardrobe that doesn't."},
+  "m9-1":{s:["Save 2–3 photos of cuts you like on people with a similar face shape and hair type.","Book a proper barber or stylist, not the cheapest option.","Ask what they'd recommend for your face shape, and how to style it at home.","Book the next appointment before you leave: every 4–6 weeks for short hair."],t:"Ask which product they used and how much to use."},
+  "m9-2":{s:["Morning: cleanser, moisturiser, SPF 30+.","Evening: cleanser and moisturiser. Add one active ingredient, such as retinol a few nights a week, once the basics are a habit.","Introduce one new product at a time and give it 4 weeks."],t:"Consistency beats expensive products every time."},
+  "m9-3":{s:["Use the same spot, light and time of day. Morning before eating is best.","Take front, side and back photos in fitted clothes.","Retake them every 4 weeks. Don't check daily."],t:"The mirror lies, but photos side by side after 3 months don't."},
+  "m10-0":{s:["Total your income by source in the Side-hustle income tracker.","Work out which source brings the most money for the least time.","Note where your best customers came from."],t:"Do more of what's working, and drop the bottom 20%."},
+  "m10-1":{s:["Raise prices for new customers first, by 10–25%.","Or add a premium version with more value at a higher price.","Tell existing customers in advance and keep their price for a while."],t:"If nobody says you're too expensive, you're too cheap."},
+  "m10-2":{s:["List every task you repeat weekly.","Pick the most annoying one and turn it into a template, a checklist or a scheduled tool.","Examples: invoice templates, saved email replies, scheduled social posts."],t:"Every hour saved is an hour you can spend growing the business or with your family."},
+  "m11-3":{s:["Read back through your weekly reviews and wins.","Ask: what gave me the most energy? What do I want more of?","Choose 3 one-word themes for next year, for example Strength, Family, Freedom."],t:"Themes are easier to live by than resolutions."},
+
+  // chef quest
+  c1:{s:["Pinch grip: pinch the blade just above the handle between your thumb and the side of your index finger, and wrap your other fingers round the handle.","Guiding hand: curl your fingertips under like a claw, so your knuckles guide the blade.","Honing steel: hold it upright, tip on a board. Draw the blade down it at about 15–20°, alternating sides, 5–6 strokes each."],t:"A honing steel straightens the edge. Sharpen properly on a whetstone or with a pull-through sharpener every few months."},
+  c2:{s:["Onion: halve it through the root and peel, keeping the root on to hold it together.","Make vertical cuts towards the root without cutting through it, then slice across for an even dice.","Julienne: cut a peeled carrot into 5 cm lengths, square off the sides, slice into 2–3 mm planks, stack them, and cut 2–3 mm matchsticks."],t:"Dice the julienne crossways and you get brunoise, the finest dice."},
+  c3:{s:["Read the whole recipe before you start.","Prep and measure every ingredient into small bowls.","Line them up in the order you'll use them.","Keep a bin bowl beside you and clean as you go."],t:"Mise en place is French for everything in its place. It's what makes cooking feel calm."},
+  c4:{s:["Salt meat ahead of time, ideally an hour before or the night before.","Salt pasta and veg water, and taste the sauce at every stage.","If it tastes flat, add salt. If it tastes heavy or dull, add acid: lemon or vinegar.","Finish with flaky salt, herbs or a little citrus zest."],t:"Keep a tasting spoon by the hob at all times."},
+  c5:{s:["Rice: rinse until the water runs clear. For basmati, use 1 cup of rice to 1¼ cups of water.","Bring to the boil, lid on, lowest heat for 10 minutes. Then rest off the heat with the lid on for 10 minutes and fluff with a fork.","Pasta: use a big pot with about 10 g of salt per litre of water, at a rolling boil.","Cook 1–2 minutes less than the packet says, save a mug of pasta water, and finish the pasta in the sauce."],t:"Starchy pasta water helps the sauce cling to the pasta. Add a splash as you toss."},
+  c6:{s:["Boiled: lower the eggs into boiling water. 6½ minutes for jammy, 9 for firm. Then into iced water.","Poached: very fresh eggs, gently simmering water. Crack into a sieve to drain the loose white, slide in, cook 3 minutes.","Scrambled: butter, low heat, stir constantly. Take off the heat while still slightly wet.","Fried: medium heat, butter or oil. Spoon the hot fat over the top to set the white.","Omelette: 3 beaten eggs into foaming butter. Stir with a fork while shaking the pan, then roll it up while it's just set."],t:"The perfect omelette has no colour on the outside. Keep the heat moderate."},
+  p1:{s:["Roast a chicken carcass, or use raw wings, until browned. This step is optional but adds flavour.","Cover with cold water and add onion, carrot, celery, a bay leaf and peppercorns. No salt.","Bring to a bare simmer and never boil. Skim off any foam.","Simmer 3–4 hours for chicken, or 45–60 minutes for veg. Strain, cool quickly, then refrigerate (4 days) or freeze."],t:"Boiling makes stock cloudy and greasy. Bubbles should barely break the surface."},
+  p2:{s:["Take the steak out of the fridge 30 minutes before. Pat it dry and salt it well.","Heat a heavy pan until very hot with a little high-smoke-point oil.","Sear, flipping every minute, until well browned. In the last minute add butter, garlic and thyme and spoon it over the steak.","Use a thermometer: 52 °C for medium-rare. Pull 3 °C early because it keeps cooking. Rest for 5 minutes."],t:"Slice across the grain. Look for the lines in the meat and cut across them."},
+  p3:{s:["After searing, take the meat out and pour off most of the fat.","Add a chopped shallot and cook for 1 minute.","Deglaze: pour in wine or stock and scrape up the browned bits (the fond).","Reduce by half, add stock, reduce again. Then off the heat swirl in a few cubes of cold butter. Add the meat's resting juices."],t:"Swirling in cold butter is called monter au beurre. It makes the sauce glossy."},
+  p4:{s:["The night before, salt the chicken and leave it uncovered in the fridge so the skin dries.","Roast at 220 °C for 20 minutes, then 190 °C until the thickest part of the thigh reads 75 °C, about 1 hour 15 minutes in total for 1.5 kg.","Rest for 15 minutes.","Carve: pull off the legs at the joint and split them into thigh and drumstick. Cut the breasts off along the breastbone and slice."],t:"Use the carcass for your stock. Two quest steps from one bird."},
+  p5:{s:["Vinaigrette: whisk 1 part vinegar with a teaspoon of mustard and a pinch of salt, then slowly whisk in 3 parts oil.","Mayonnaise: whisk 1 room-temperature yolk with a teaspoon of mustard, salt and a splash of lemon.","Add 200 ml of neutral oil drop by drop at first, then in a thin stream, whisking all the time."],t:"If the mayo splits, whisk a fresh yolk in a clean bowl and slowly whisk the split mix into it."},
+  p6:{s:["Brown the meat well, in batches, in a heavy casserole.","Soften onion, carrot and celery, then stir in tomato purée.","Deglaze with wine and add stock until the meat is half to two-thirds covered.","Lid on, into the oven at 150 °C for about 3 hours, until it falls apart. Skim the fat and reduce the sauce."],t:"Braises taste even better the next day, so it's perfect for batch cooking."},
+  p7:{s:["Béchamel: melt 30 g butter, stir in 30 g flour and cook for 1–2 minutes. Gradually whisk in 500 ml warm milk and simmer for 5 minutes. Season with salt and nutmeg.","Hollandaise: whisk 2 yolks with a tablespoon of water and lemon juice in a bowl over barely simmering water until thick and pale.","Off the heat, slowly whisk in 125 g warm melted butter. Season with salt, lemon and a pinch of cayenne."],t:"If hollandaise gets too thick, add a few drops of warm water. If it splits, whisk it into a fresh yolk."},
+  s1:{s:["Use 100 g of 00 flour per egg. One egg serves one person.","Make a well in the flour, crack the eggs in, mix with a fork, then knead for 8–10 minutes until smooth.","Wrap and rest for 30 minutes.","Roll very thin, until you can see your hand through it. Cut, then cook for 2–3 minutes."],t:"If the dough is too dry, wet your hands rather than adding water."},
+  s2:{s:["Mix 500 g strong white flour, 10 g salt, 7 g instant yeast and 350 ml warm water.","Knead for 10 minutes until it stretches thin without tearing (the windowpane test).","Cover and leave until doubled, 1–2 hours. Shape into a tight ball and prove for 45–60 minutes.","Bake at 230 °C for 30–35 minutes, with a tray of water in the oven for steam. It's done when the base sounds hollow."],t:"Let it cool for an hour before cutting. It's still cooking inside."},
+  s3:{s:["Rub 100 g cold cubed butter into 200 g plain flour and a pinch of salt until it looks like breadcrumbs.","Add 2–3 tablespoons of cold water and bring it together. Don't overwork it.","Chill for 30 minutes, roll to 3 mm, line the tin, then chill again.","Blind-bake: line with baking paper and baking beans or rice. 15 minutes at 200 °C, then remove the beans and bake 5–10 minutes more until golden."],t:"Cold hands, cold butter, a cold kitchen. Warmth makes pastry tough."},
+  s4:{s:["Pat the skin completely dry. Salt it just before cooking.","Heat oil in a pan over medium-high heat and lay the fish in skin side down.","Press it flat with a spatula for 30 seconds so it doesn't curl.","Cook about 80% of the way on the skin side, until the flesh is opaque almost to the top, then flip for 30–60 seconds."],t:"Don't move the fish while it's skin side down. It releases from the pan when it's ready."},
+  s5:{s:["Taste the dish and think about what it's missing.","If it's flat, add salt. If it's heavy or rich, add acid.","If it's too sharp or sour, add fat or a little sweetness. If it's one-note, add heat (chilli, pepper) or fresh herbs.","Then think about texture: does it need something crunchy?"],t:"The book Salt, Fat, Acid, Heat by Samin Nosrat is the best guide to this."},
+  s6:{s:["Warm the plates.","Use odd numbers of things (3 or 5), build some height, and leave empty space on the plate.","Sauce goes under the food or in a swoosh, never drowning it.","Wipe the rim, and add a garnish that belongs in the dish."],t:"Look up photos from restaurants you like and copy one layout."},
+  h1:{s:["Use a formula instead of a recipe: protein + vegetable + starch + sauce.","Choose a technique you've learned: sear, roast, braise or a pan sauce.","Taste and adjust as you go, using salt, fat, acid and heat.","Write down what worked."],t:"This is where all the earlier steps pay off."},
+  h2:{s:["Eat the dish and note every part of it: the sauce, the texture, the garnish.","Search how the restaurant or similar chefs make it.","Cook each part separately, then put it together.","Compare it with the original and adjust next time."],t:"Expect two or three attempts. That's normal."},
+  h3:{s:["Start from one ingredient that's in season.","Pick a technique and a flavour direction, for example Asian, Mediterranean or British.","Balance it with salt, fat, acid, heat and texture.","Write the recipe with exact quantities and cook it twice."],t:"Name the dish. It's yours."},
+  h4:{s:["Plan a menu where two courses can be made ahead: a cold starter, a braise and a make-ahead dessert.","Write a timeline working backwards from when you'll serve.","Prep everything the day before that you can.","Leave only one dish that has to be cooked at the last minute."],t:"Calm hosts make the best dinners. Mise en place is your friend."}
+};
+const guideBtn = k => GUIDES[k] ? `<button class="gbtn" data-act="guide" data-k="${esc(k)}" aria-expanded="${ui.guide === k}">${ui.guide === k ? "Close" : "How to"}</button>` : "";
+const guidePanel = k => ui.guide === k && GUIDES[k] ? `<div class="guide"><ol>${GUIDES[k].s.map(x => `<li>${esc(x)}</li>`).join("")}</ol>${GUIDES[k].t ? `<p class="tip"><b>Tip:</b> ${esc(GUIDES[k].t)}</p>` : ""}</div>` : "";
+const withGuide = (k, btn) => GUIDES[k] ? `<div class="item">${btn}${guideBtn(k)}</div>${guidePanel(k)}` : btn;
+
 /* ---------- views ---------- */
 function viewToday(){
   const s = ui.date, d = day(s), n = dayNum(s), sc = score(s), st = streaks();
@@ -782,7 +882,7 @@ function viewToday(){
     const done = hs.filter(x => h[x.id]).length;
     return `<div class="area">
       <div class="area-h"><span class="tag">${a.tag}</span><h3>${esc(a.name)}</h3><span class="pct">${done}/${hs.length}</span></div>
-      ${hs.map(x => `<button class="check ${h[x.id] ? "on" : ""}" data-act="habit" data-id="${esc(x.id)}" aria-pressed="${!!h[x.id]}"><span class="box">${TICK}</span><span class="t">${esc(x.label)}${bt.has(x.id) ? `<span class="bounty">2× XP</span>` : ""}</span></button>`).join("")}
+      ${hs.map(x => withGuide(x.id, `<button class="check ${h[x.id] ? "on" : ""}" data-act="habit" data-id="${esc(x.id)}" aria-pressed="${!!h[x.id]}"><span class="box">${TICK}</span><span class="t">${esc(x.label)}${bt.has(x.id) ? `<span class="bounty">2× XP</span>` : ""}</span></button>`)).join("")}
       ${a.id === "less" ? `<div class="stepper"><span class="t" style="flex:1">Items let go today</span><button class="icon-btn" data-act="letgo" data-d="-1" aria-label="One fewer">−</button><span class="n">${Number(d.letgo)||0}</span><button class="icon-btn" data-act="letgo" data-d="1" aria-label="One more">+</button></div>` : ""}
     </div>`;
   }).join("");
@@ -827,7 +927,7 @@ function viewToday(){
   ${(() => { const act = P().quests.map(q => ({q, nx: questSteps(q).find(x => !q.done[x.id])})).filter(o => o.nx);
     return act.length ? `<section class="card"><div class="row between"><div class="eyebrow">Side quest${act.length > 1 ? "s" : ""} · next step</div><button class="btn small ghost" data-act="goquests">Quest log</button></div>
     ${act.map(({q, nx}) => `<div class="stack" style="gap:2px"><h3>${esc(questTitle(q))}${nx.tier ? ` <span class="muted mono" style="font-size:.72rem;font-weight:500">${esc(nx.tier.toUpperCase())}</span>` : ""}</h3>
-      <button class="check" data-act="qstep" data-q="${esc(q.id)}" data-s="${esc(nx.id)}" aria-pressed="false"><span class="box">${TICK}</span><span class="t">${esc(nx.label)}<span class="bounty">+${XP.qstep} XP</span></span></button></div>`).join("")}</section>` : ""; })()}
+      ${withGuide(q.builtin ? nx.id : "", `<button class="check" data-act="qstep" data-q="${esc(q.id)}" data-s="${esc(nx.id)}" aria-pressed="false"><span class="box">${TICK}</span><span class="t">${esc(nx.label)}<span class="bounty">+${XP.qstep} XP</span></span></button>`)}</div>`).join("")}</section>` : ""; })()}
 
   <section class="card boss ${boss.down ? "down" : ""}">
     <div class="row between"><div class="eyebrow">Weekly boss</div><span class="mono" style="font-size:.8rem;color:var(--boss);font-weight:700">${boss.down ? "Defeated" : (boss.hp - boss.dmg) + " HP left"}</span></div>
@@ -840,7 +940,7 @@ function viewToday(){
     <div class="row between"><div class="eyebrow">Month ${mi+1} quest</div><span class="mono" style="font-size:.75rem;color:var(--sun);font-weight:700">+${XP.mtask} XP each</span></div>
     <h2>${esc(M.t)}</h2>
     <p>${esc(M.b)}</p>
-    <div>${M.tasks.map((t,i) => `<button class="check ${mt[i] ? "on" : ""}" data-act="mtask" data-m="${mi}" data-i="${i}" aria-pressed="${!!mt[i]}"><span class="box">${TICK}</span><span class="t">${esc(t)}</span></button>`).join("")}</div>
+    <div>${M.tasks.map((t,i) => withGuide(`m${mi}-${i}`, `<button class="check ${mt[i] ? "on" : ""}" data-act="mtask" data-m="${mi}" data-i="${i}" aria-pressed="${!!mt[i]}"><span class="box">${TICK}</span><span class="t">${esc(t)}</span></button>`)).join("")}</div>
   </section>
 
   <section class="card">
@@ -1018,13 +1118,14 @@ function viewHero(){
     <div class="pet-row">
       <button class="habitat" data-act="pet" aria-label="Pet ${esc(P().spriteName || "Pip")}">${spriteCanvas(g, 128)}</button>
       <div class="stack" style="gap:6px;min-width:0">
-        <div class="eyebrow">Your companion</div>
+        <div class="eyebrow">Your hero's journey</div>
         <h2>${esc(P().spriteName || "Pip")} the ${EVOS[stageFor(g.level)][1]}</h2>
-        <p class="muted" style="font-size:.88rem">${EVOS[stageFor(g.level)+1] ? `Evolves at level ${EVOS[stageFor(g.level)+1][0]}.` : "Fully evolved."} Its headwear matches your strongest stat.</p>
+        <p class="muted" style="font-size:.88rem">${EVOS[stageFor(g.level)][2]} ${EVOS[stageFor(g.level)+1] ? `Rises to ${EVOS[stageFor(g.level)+1][1]} at level ${EVOS[stageFor(g.level)+1][0]}.` : "The journey is complete."}</p>
+        <p class="muted" style="font-size:.88rem">${spriteState(g).earned ? `House colours: <b style="color:${spriteState(g).house}">${spriteState(g).houseName}</b>, from your strongest stat (${spriteState(g).houseStat}). They show on the cloak and shield.` : "Your strongest stat will choose your house colours. They show on the cloak and shield."}</p>
         <label class="f"><span>Name</span><input type="text" data-in="set" data-k="spriteName" value="${esc(P().spriteName || "Pip")}" maxlength="16"></label>
       </div>
     </div>
-    <div class="evo">${EVOS.map(([lv, nm], i) => `<div class="${i === stageFor(g.level) ? "cur" : ""}"><canvas class="sprite" data-sprite width="32" height="32" data-stage="${i}" data-mood="happy" data-level="2" data-sil="${i > stageFor(g.level) ? 1 : 0}"></canvas><span>${i > stageFor(g.level) ? "LV " + lv : nm}</span></div>`).join("")}</div>
+    <div class="evo">${EVOS.map(([lv, nm], i) => `<div class="${i === stageFor(g.level) ? "cur" : ""}"><canvas class="sprite" data-sprite width="32" height="32" data-stage="${i}" data-mood="happy" data-house="${spriteState(g).house}" data-sil="${i > stageFor(g.level) ? 1 : 0}"></canvas><span>${i > stageFor(g.level) ? "LV " + lv : nm}</span></div>`).join("")}</div>
   </section>
 
   <section class="hero-lvl" style="padding-top:6px">
@@ -1059,7 +1160,7 @@ function viewHero(){
         <div class="bigbar" role="img" aria-label="${pct}% complete"><b style="width:${pct}%"></b></div>
         ${n === st.length && st.length ? `<p style="color:var(--sun);font-weight:700">Quest complete. +${XP.qdone} XP bonus earned.</p>` : ""}
         ${groups.map(gp => `<div class="stack" style="gap:0">${gp.k ? `<div class="eyebrow" style="margin-top:6px">${esc(gp.k)} · ${esc(gp.sub)} · ${gp.items.filter(x => q.done[x.id]).length}/${gp.items.length}</div>` : ""}
-          ${gp.items.map(x => `<button class="check ${q.done[x.id] ? "on" : ""}" data-act="qstep" data-q="${esc(q.id)}" data-s="${esc(x.id)}" aria-pressed="${!!q.done[x.id]}"><span class="box">${TICK}</span><span class="t">${esc(x.label)}${q.done[x.id] ? ` <span class="mono muted" style="font-size:.7rem">${esc(fmtShort(q.done[x.id]))}</span>` : ""}</span></button>`).join("")}</div>`).join("")}
+          ${gp.items.map(x => withGuide(q.builtin ? x.id : "", `<button class="check ${q.done[x.id] ? "on" : ""}" data-act="qstep" data-q="${esc(q.id)}" data-s="${esc(x.id)}" aria-pressed="${!!q.done[x.id]}"><span class="box">${TICK}</span><span class="t">${esc(x.label)}${q.done[x.id] ? ` <span class="mono muted" style="font-size:.7rem">${esc(fmtShort(q.done[x.id]))}</span>` : ""}</span></button>`)).join("")}</div>`).join("")}
         ${ui.confirmQuest === q.id ? `<div class="confirm"><p><b>Remove this side quest?</b> Its progress and XP go with it.</p><div class="row"><button class="btn small danger" data-act="delquest" data-q="${esc(q.id)}">Remove quest</button><button class="btn small" data-act="askdelquest" data-q="">Keep it</button></div></div>`
           : `<div><button class="btn small ghost danger" data-act="askdelquest" data-q="${esc(q.id)}">Remove quest</button></div>`}
       </details>`; }).join("")}
@@ -1136,6 +1237,7 @@ main.addEventListener("click", e => {
     case "addlift": { const ex = val("l-ex"), w = parseFloat(val("l-w")), r = parseInt(val("l-r"), 10); if (!ex || !isFinite(w) || !isFinite(r)) { toast("Add an exercise, weight and reps"); return; } p.lifts.push({id:uid36(), d:todayStr(), ex, w, r}); markDirty("profile"); toast("Set logged"); break; }
     case "dellift": p.lifts = p.lifts.filter(x => x.id !== b.dataset.id); markDirty("profile"); break;
     case "addincome": { const src = val("i-src") || "Income", v = parseFloat(val("i-v")); if (!isFinite(v)) { toast("Enter an amount"); return; } p.income.push({id:uid36(), d:todayStr(), src, v}); markDirty("profile"); toast("Income added"); break; }
+    case "guide": ui.guide = ui.guide === b.dataset.k ? null : b.dataset.k; render(); return;
     case "pet": {
       const bub = document.getElementById("bubble"); if (bub) bub.textContent = PETS[Math.floor(Math.random()*PETS.length)];
       if (e.clientX && !matchMedia("(prefers-reduced-motion: reduce)").matches){ const h = document.createElement("div"); h.className = "heartfx"; h.textContent = "♥"; h.style.left = e.clientX + "px"; h.style.top = (e.clientY - 20) + "px"; document.body.appendChild(h); setTimeout(() => h.remove(), 1000); }
