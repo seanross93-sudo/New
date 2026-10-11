@@ -1,0 +1,705 @@
+<title>Year One</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one phone-width column, a sticky day header, a fixed bottom tab bar; the 365-cell year grid is the signature. */
+:root{
+  --bg:#F2F4F1; --surface:#FFFFFF; --ink:#16201B; --muted:#5B6862; --line:#D9E0DB;
+  --accent:#1E6B57; --accent-ink:#FFFFFF; --accent-soft:#DCEDE5;
+  --sun:#B4650F; --sun-soft:#F6E5CE; --danger:#B3362B;
+  --h0:#E2E8E3; --h1:#BCDACB; --h2:#82BDA3; --h3:#3C9173; --h4:#1E6B57;
+  --display:"Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --body:"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --r:14px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1412; --surface:#161F1B; --ink:#E5ECE8; --muted:#94A49B; --line:#26332D;
+  --accent:#5CC29E; --accent-ink:#0A1310; --accent-soft:#1B372D;
+  --sun:#E9A04A; --sun-soft:#3A2A15; --danger:#EE7B6F;
+  --h0:#1D2823; --h1:#22463A; --h2:#2D6C55; --h3:#44A07D; --h4:#70D4AD; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0E1412; --surface:#161F1B; --ink:#E5ECE8; --muted:#94A49B; --line:#26332D;
+  --accent:#5CC29E; --accent-ink:#0A1310; --accent-soft:#1B372D;
+  --sun:#E9A04A; --sun-soft:#3A2A15; --danger:#EE7B6F;
+  --h0:#1D2823; --h1:#22463A; --h2:#2D6C55; --h3:#44A07D; --h4:#70D4AD; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:680px;margin:0 auto;padding-inline:16px;padding-block:8px 110px;display:flex;flex-direction:column;gap:20px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:clamp(1.6rem,6vw,2.2rem);font-weight:800;letter-spacing:-.02em}
+h2{font-size:1.25rem;font-weight:700;letter-spacing:-.01em}
+h3{font-size:1.02rem;font-weight:700}
+p{margin:0}
+.muted{color:var(--muted)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.eyebrow{font-family:var(--mono);font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.tag{font-family:var(--mono);font-size:.68rem;letter-spacing:.06em;font-weight:700;color:var(--accent);background:var(--accent-soft);padding:2px 7px;border-radius:6px}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.between{justify-content:space-between}
+.stack{display:flex;flex-direction:column;gap:10px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 14px;font-weight:700}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.small{padding:5px 10px;font-size:.85rem}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--danger)}
+.icon-btn{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;font-size:1.1rem}
+input[type=text],input[type=number],input[type=date],textarea,select{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 11px;min-width:0}
+textarea{resize:vertical;min-height:70px}
+label.f,div.f{display:flex;flex-direction:column;gap:5px;font-size:.88rem;color:var(--muted);min-width:0}
+label.f > span,div.f > span{font-weight:700}
+
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:12px 10px;border-bottom:1px solid var(--line);margin-inline:-16px;padding-inline:16px}
+.top .row{flex-wrap:nowrap}
+.brand{font-family:var(--display);font-weight:800;font-size:1.05rem;letter-spacing:-.01em}
+.sync{font-family:var(--mono);font-size:.68rem;color:var(--muted);display:flex;align-items:center;gap:6px;white-space:nowrap}
+.sync i{width:7px;height:7px;border-radius:50%;background:var(--muted);display:inline-block}
+.sync.on i{background:var(--accent)}
+
+/* hero */
+.hero{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center}
+.hero .why{font-style:italic;color:var(--muted);margin-top:6px}
+.ring{width:92px;height:92px;position:relative}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring .lbl{position:absolute;inset:0;display:grid;place-items:center;text-align:center;font-family:var(--mono);font-weight:700;font-size:1.15rem;line-height:1.1}
+.ring .lbl small{display:block;font-size:.62rem;color:var(--muted);font-weight:500;letter-spacing:.06em}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{font-family:var(--mono);font-size:.75rem;padding:4px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--line)}
+.chip.sun{background:var(--sun-soft);border-color:transparent;color:var(--sun);font-weight:700}
+.datenav{display:flex;gap:8px;align-items:center}
+
+/* phase bar */
+.phases{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.phase{height:6px;border-radius:3px;background:var(--h0);position:relative;overflow:hidden}
+.phase b{position:absolute;inset:0;background:var(--accent);transform-origin:left}
+.phase-l{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;font-family:var(--mono);font-size:.64rem;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.phase-l .cur{color:var(--accent);font-weight:700}
+
+/* focus */
+.focus{background:var(--sun-soft);border-color:transparent}
+.focus .eyebrow{color:var(--sun)}
+.check{display:flex;gap:10px;align-items:flex-start;text-align:left;width:100%;background:none;border:0;padding:6px 0}
+.box{flex:none;width:22px;height:22px;border-radius:7px;border:2px solid var(--muted);display:grid;place-items:center;margin-top:1px;transition:background .15s,border-color .15s}
+.box svg{width:14px;height:14px;opacity:0}
+.on .box{background:var(--accent);border-color:var(--accent)}
+.on .box svg{opacity:1}
+.focus .on .box{background:var(--sun);border-color:var(--sun)}
+.check .t{flex:1;min-width:0}
+.on .t{color:var(--muted);text-decoration:line-through;text-decoration-thickness:1px}
+
+/* area habit blocks */
+.area{display:flex;flex-direction:column;gap:2px;padding-block:10px;border-top:1px solid var(--line)}
+.area:first-of-type{border-top:0;padding-top:0}
+.area-h{display:flex;align-items:center;gap:8px;margin-bottom:2px}
+.area-h h3{font-size:.98rem}
+.area-h .pct{margin-left:auto;font-family:var(--mono);font-size:.74rem;color:var(--muted)}
+.stepper{display:flex;align-items:center;gap:10px;padding:6px 0}
+.stepper .n{font-family:var(--mono);font-weight:700;min-width:2ch;text-align:center}
+
+/* scale buttons */
+.scale{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.scale button{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:8px 0;font-family:var(--mono);font-weight:700}
+.scale button.sel{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.scale-l{display:flex;justify-content:space-between;font-size:.74rem;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+
+/* stats */
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}
+.tile .v{font-family:var(--mono);font-weight:700;font-size:1.35rem;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.tile .k{font-size:.76rem;color:var(--muted)}
+@media (max-width:420px){.tiles{grid-template-columns:repeat(2,1fr)}}
+
+/* heatmap */
+.heat-wrap{overflow-x:auto;padding-bottom:4px}
+.heat{display:grid;grid-template-rows:repeat(7,12px);grid-auto-flow:column;grid-auto-columns:12px;gap:3px;width:max-content}
+.heat i{width:12px;height:12px;border-radius:3px;background:var(--h0);display:block}
+.heat i.l1{background:var(--h1)}.heat i.l2{background:var(--h2)}.heat i.l3{background:var(--h3)}.heat i.l4{background:var(--h4)}
+.heat i.fut{background:transparent;border:1px dashed var(--line)}
+.heat i.today{outline:2px solid var(--sun);outline-offset:1px}
+.legend{display:flex;align-items:center;gap:4px;font-size:.72rem;color:var(--muted)}
+.legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+
+.bars{display:flex;flex-direction:column;gap:9px}
+.bar{display:grid;grid-template-columns:5.2rem 1fr 3rem;align-items:center;gap:10px;font-size:.88rem}
+.bar .track{height:9px;border-radius:5px;background:var(--h0);overflow:hidden}
+.bar .fill{height:100%;background:var(--accent);border-radius:5px}
+.bar .num{font-family:var(--mono);font-size:.78rem;text-align:right;color:var(--muted)}
+.spark{width:100%;height:80px;display:block}
+
+/* lists */
+.list{display:flex;flex-direction:column}
+.li{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line);min-width:0}
+.li:first-child{border-top:0}
+.li .grow{flex:1;min-width:0;overflow-wrap:anywhere}
+.pill{font-family:var(--mono);font-size:.68rem;padding:3px 8px;border-radius:999px;border:1px solid var(--line);background:var(--bg);white-space:nowrap}
+.pill.reading{background:var(--sun-soft);color:var(--sun);border-color:transparent}
+.pill.done{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.x{border:0;background:none;color:var(--muted);font-size:1.1rem;padding:2px 6px;border-radius:6px}
+.x:hover{color:var(--danger)}
+details.area-card > summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px}
+details.area-card > summary::-webkit-details-marker{display:none}
+details.area-card > summary .chev{margin-left:auto;color:var(--muted);transition:transform .2s}
+details.area-card[open] > summary .chev{transform:rotate(90deg)}
+.goal-line{font-size:.9rem;color:var(--muted);overflow-wrap:anywhere}
+.addrow{display:grid;grid-template-columns:1fr auto;gap:8px}
+.addrow3{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px}
+@media (max-width:480px){.addrow3{grid-template-columns:1fr 1fr}.addrow3 .btn{grid-column:span 2}}
+.month{display:grid;grid-template-columns:2.6rem 1fr;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.month:first-child{border-top:0}
+.month .mn{font-family:var(--mono);font-weight:700;color:var(--muted)}
+.month.cur .mn{color:var(--sun)}
+.month.cur h3{color:var(--sun)}
+.review{border-top:1px solid var(--line);padding-top:10px}
+.review:first-child{border-top:0;padding-top:0}
+.confirm{background:var(--sun-soft);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px}
+
+/* tab bar */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--surface);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px))}
+nav.tabs .in{max-width:680px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+nav.tabs button{border:0;background:none;padding:6px 0;border-radius:10px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:.74rem;color:var(--muted);font-weight:700}
+nav.tabs button svg{width:22px;height:22px}
+nav.tabs button.act{color:var(--accent);background:var(--accent-soft)}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:10px;font-size:.88rem;z-index:20}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="row between">
+      <div class="brand">Year One</div>
+      <div class="sync" id="sync"><i></i><span>Saved on this device</span></div>
+    </div>
+  </header>
+  <main id="main" class="stack" style="gap:20px"></main>
+</div>
+<nav class="tabs" aria-label="Sections"><div class="in" id="tabs"></div></nav>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- content ---------- */
+const AREAS = [
+  {id:"gym",   name:"Gym",               tag:"GYM",  goal:"Train 3–4 times a week, every week. Get measurably stronger each quarter.",
+    habits:[["gym1","Trained — gym or home workout"],["gym2","8,000+ steps"]]},
+  {id:"food",  name:"Food & cooking",    tag:"FOOD", goal:"Cook at home 5 nights a week and learn 24 new recipes.",
+    habits:[["food1","Cooked a meal at home"],["food2","Protein with every meal"],["food3","5 portions of veg or fruit"]]},
+  {id:"read",  name:"Reading",           tag:"READ", goal:"Finish 24 books this year.",
+    habits:[["read1","Read 20 pages"]]},
+  {id:"fam",   name:"Family",            tag:"FAM",  goal:"A weekly family ritual and one proper day out each month.",
+    habits:[["fam1","Phone-free time with family"],["fam2","Reached out to someone I love"]]},
+  {id:"biz",   name:"Side hustles",      tag:"BIZ",  goal:"Earn the first 1,000 from a side project.",
+    habits:[["biz1","45 minutes of focused side-hustle work"]]},
+  {id:"calm",  name:"Inner peace",       tag:"CALM", goal:"A daily stillness practice. Calmer under pressure.",
+    habits:[["calm1","10 minutes meditation or breathwork"],["calm2","Journaled"]]},
+  {id:"home",  name:"Organised house",   tag:"HOME", goal:"Every room has a place for everything, and everything is in its place.",
+    habits:[["home1","15-minute tidy and reset"]]},
+  {id:"less",  name:"Minimalism",        tag:"LESS", goal:"Let go of 365 things. One no-spend week every month.",
+    habits:[["less1","No unnecessary spending"]]},
+  {id:"look",  name:"Looking better",    tag:"LOOK", goal:"Lean, strong, well rested, and dressed with intent.",
+    habits:[["look1","Skincare and grooming done"],["look2","7+ hours of sleep"]]},
+  {id:"feel",  name:"Feeling better",    tag:"FEEL", goal:"Wake up with energy on most days.",
+    habits:[["feel1","Drank 2 litres of water"],["feel2","20 minutes outside in daylight"]]}
+];
+
+const PHASES = [
+  {name:"Foundation", blurb:"Show up daily. Small wins, no heroics."},
+  {name:"Build",      blurb:"Raise the bar. Add weight, pages and hours."},
+  {name:"Momentum",   blurb:"Habits run themselves. Push the big goals."},
+  {name:"Become",     blurb:"Live as the person you set out to be."}
+];
+
+const MONTHS = [
+  {t:"Reset sleep and routine", b:"Everything else rests on this month.", tasks:["Fixed wake-up time, 7 days a week","Phone out of the bedroom","Plan tomorrow the night before","Book 3 gym sessions every week"]},
+  {t:"Own the kitchen", b:"Cooking at home is health, money and family time in one.", tasks:["Cook 5 nights a week","Learn 4 new recipes","Batch-prep lunches on Sundays","Clear junk food out of the house"]},
+  {t:"Declutter room by room", b:"A calm house makes a calm head.", tasks:["Wardrobe: keep only what you wear","Kitchen cupboards and drawers","The 'everything' drawer and paperwork","Sell or donate a full bag of items"]},
+  {t:"Get stronger", b:"Progressive overload on the big lifts.", tasks:["Log every session","Add weight or reps every week","Hit a new personal best","Daily mobility, 10 minutes"]},
+  {t:"Reading streak", b:"Make books the default, not the phone.", tasks:["Read every single day","Finish 3 books","Swap one hour of scrolling for reading","Start a book with the family"]},
+  {t:"Launch the side hustle", b:"Ship something small that someone can pay for.", tasks:["Pick one idea and commit","Build the smallest sellable version","Tell 20 people about it","Make the first sale"]},
+  {t:"Family adventures", b:"Memories over things.", tasks:["Plan a family day out","Weekly games or film night","A walk with each family member alone","Cook a meal together"]},
+  {t:"No-buy month", b:"Underconsume on purpose and notice the urges.", tasks:["Buy only essentials for 30 days","Unsubscribe from every shopping email","Cancel one subscription","Write down every urge you resisted"]},
+  {t:"Go deeper inward", b:"Stillness as a skill.", tasks:["Meditate 20 minutes a day","Spend a full day offline","Write a letter to your future self","Find one thing to forgive"]},
+  {t:"Style and grooming refresh", b:"Look like you take yourself seriously.", tasks:["Build a capsule wardrobe","Get a great haircut","Lock in a skincare routine","Take a progress photo"]},
+  {t:"Scale the side hustle", b:"Double down on what worked.", tasks:["Review income and best channel","Raise prices or add an offer","Automate one repeat task","Set next year's income target"]},
+  {t:"Reflect and plan year two", b:"Look back at who you were on day one.", tasks:["Read back through your weekly reviews","Retake the day-one photos and measurements","Write down your 10 biggest wins","Choose next year's three themes"]}
+];
+
+const ICONS = {
+  today:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
+  year:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="10" y="3" width="5" height="5" rx="1"/><rect x="17" y="3" width="4" height="5" rx="1"/><rect x="3" y="10" width="5" height="5" rx="1"/><rect x="10" y="10" width="5" height="5" rx="1"/><rect x="3" y="17" width="5" height="4" rx="1"/></svg>',
+  areas:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg>',
+  review:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h12l4 4v12H4z"/><path d="M8 12h8M8 16h5"/></svg>'
+};
+const TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="var(--accent-ink)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>';
+
+/* ---------- dates ---------- */
+const pad = n => String(n).padStart(2,"0");
+const ymd = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const parse = s => { const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d); };
+const addDays = (s, n) => { const d = parse(s); d.setDate(d.getDate()+n); return ymd(d); };
+const diffDays = (a, b) => Math.round((parse(b) - parse(a)) / 864e5);
+const todayStr = () => ymd(new Date());
+const fmtLong = s => parse(s).toLocaleDateString(undefined,{weekday:"long", day:"numeric", month:"long"});
+const fmtShort = s => parse(s).toLocaleDateString(undefined,{day:"numeric", month:"short"});
+const mondayOf = s => { const d = parse(s); const w = (d.getDay()+6)%7; d.setDate(d.getDate()-w); return ymd(d); };
+
+/* ---------- state ---------- */
+const uid36 = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+function defaultProfile(){
+  const areas = {};
+  AREAS.forEach(a => { areas[a.id] = {goal:a.goal, habits:a.habits.map(([id,label]) => ({id,label}))}; });
+  return {
+    startDate: todayStr(), name:"", why:"In one year I want to be fitter, calmer, closer to my family and living with less.",
+    currency:"£", unit:"kg", areas, monthTasks:{}, books:[], weights:[], lifts:[], income:[], reviews:{}
+  };
+}
+function normalize(p){
+  const d = defaultProfile();
+  const out = Object.assign({}, d, p || {});
+  out.areas = Object.assign({}, d.areas, (p && p.areas) || {});
+  ["books","weights","lifts","income"].forEach(k => { if (!Array.isArray(out[k])) out[k] = []; });
+  ["monthTasks","reviews"].forEach(k => { if (!out[k] || typeof out[k] !== "object") out[k] = {}; });
+  return out;
+}
+
+const LS = "yearone.v1";
+let state = { profile: defaultProfile(), days: {} };
+try { const raw = localStorage.getItem(LS); if (raw) { const s = JSON.parse(raw); state = { profile: normalize(s.profile), days: s.days || {} }; } } catch(e) {}
+
+let ui = { tab: "today", date: todayStr(), confirmReset:false, showImport:false };
+try { const t = localStorage.getItem(LS+".tab"); if (t) ui.tab = t; } catch(e) {}
+
+/* ---------- persistence (account sync via db, local cache always) ---------- */
+let col = null;
+const dirty = new Set();
+let timer = null, flushing = false;
+function saveLocal(){ try { localStorage.setItem(LS, JSON.stringify(state)); } catch(e) {} }
+function markDirty(key){ dirty.add(key); saveLocal(); clearTimeout(timer); timer = setTimeout(flush, 700); }
+function docData(key){
+  const v = key === "profile" ? state.profile : (state.days[key.slice(1)] || {});
+  return JSON.parse(JSON.stringify(v));
+}
+async function flush(){
+  if (!col || flushing || !dirty.size) return;
+  flushing = true;
+  const keys = [...dirty]; dirty.clear();
+  try {
+    for (const k of keys) await col.doc(k).set(docData(k));
+    setSync(true);
+  } catch(e) {
+    keys.forEach(k => dirty.add(k));
+    setSync(false, "Sync paused — saved on this device");
+  }
+  flushing = false;
+  if (dirty.size) { clearTimeout(timer); timer = setTimeout(flush, 3000); }
+}
+function setSync(on, text){
+  const el = document.getElementById("sync");
+  el.classList.toggle("on", !!on);
+  el.querySelector("span").textContent = text || (on ? "Synced to your account" : "Saved on this device");
+}
+async function connect(){
+  if (!window.claude || !window.claude.use) return;
+  try {
+    const [db, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
+    if (!db || !user) return;
+    const id = await user.id();
+    if (!id) return;
+    const c = db.collection("data/users/" + id);
+    const snap = await c.get();
+    const remoteDays = {}; let remoteProfile = null;
+    snap.docs.forEach(d => {
+      if (d.id === "profile") remoteProfile = d.data();
+      else if (d.id.startsWith("d")) remoteDays[d.id.slice(1)] = d.data() || {};
+    });
+    col = c;
+    if (remoteProfile) state.profile = normalize(remoteProfile); else dirty.add("profile");
+    Object.keys(state.days).forEach(k => { if (!remoteDays[k]) dirty.add("d"+k); });
+    Object.assign(state.days, remoteDays);
+    saveLocal();
+    setSync(true);
+    render();
+    if (dirty.size) flush();
+  } catch(e) { setSync(false); }
+}
+
+/* ---------- derived ---------- */
+const P = () => state.profile;
+const allHabits = () => AREAS.flatMap(a => (P().areas[a.id]?.habits || []).map(h => ({...h, area:a.id})));
+const day = s => state.days[s] || {};
+function ensureDay(s){ if (!state.days[s]) state.days[s] = {}; if (!state.days[s].h) state.days[s].h = {}; return state.days[s]; }
+function score(s){
+  const hs = allHabits(); if (!hs.length) return 0;
+  const h = day(s).h || {}; return hs.filter(x => h[x.id]).length / hs.length;
+}
+function level(sc){ return sc <= 0 ? 0 : sc < .34 ? 1 : sc < .6 ? 2 : sc < .9 ? 3 : 4; }
+const dayNum = s => diffDays(P().startDate, s) + 1;
+function phaseIdx(n){ return Math.min(3, Math.max(0, Math.floor((n-1)/91.25))); }
+function monthIdx(n){ return Math.min(11, Math.max(0, Math.floor((n-1)/(365/12)))); }
+function streaks(){
+  const t = todayStr(); let cur = 0, best = 0, run = 0;
+  const start = P().startDate; const span = Math.max(0, diffDays(start, t));
+  for (let i = 0; i <= span; i++){ const s = addDays(start, i); if (score(s) >= .5){ run++; best = Math.max(best, run); } else run = 0; }
+  let s = t; if (score(s) < .5) s = addDays(s, -1);
+  while (diffDays(start, s) >= 0 && score(s) >= .5){ cur++; s = addDays(s, -1); }
+  return {cur, best};
+}
+function areaRate(areaId, days = 30){
+  const hs = P().areas[areaId]?.habits || []; if (!hs.length) return 0;
+  const t = todayStr(); let tot = 0, done = 0;
+  for (let i = 0; i < days; i++){ const s = addDays(t, -i); if (diffDays(P().startDate, s) < 0) break; const h = day(s).h || {}; hs.forEach(x => { tot++; if (h[x.id]) done++; }); }
+  return tot ? done / tot : 0;
+}
+const itemsLetGo = () => Object.values(state.days).reduce((a, d) => a + (Number(d.letgo) || 0), 0);
+const income = () => P().income.reduce((a, x) => a + (Number(x.v) || 0), 0);
+const money = v => P().currency + (Math.round(v*100)/100).toLocaleString();
+
+/* ---------- helpers ---------- */
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const main = document.getElementById("main");
+function toast(msg){ const t = document.getElementById("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, 1800); }
+function ring(sc){
+  const r = 40, c = 2*Math.PI*r;
+  return `<div class="ring" role="img" aria-label="${Math.round(sc*100)}% of today's habits done"><svg viewBox="0 0 92 92"><circle cx="46" cy="46" r="${r}" fill="none" stroke="var(--h0)" stroke-width="9"/><circle cx="46" cy="46" r="${r}" fill="none" stroke="var(--accent)" stroke-width="9" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${c*(1-sc)}" style="transition:stroke-dashoffset .4s"/></svg><div class="lbl"><div>${Math.round(sc*100)}%<small>TODAY</small></div></div></div>`;
+}
+function spark(points, opts = {}){
+  if (points.length < 2) return `<p class="muted" style="font-size:.88rem">${opts.empty || "Add two or more entries to see a trend."}</p>`;
+  const W = 600, H = 80, pd = 8;
+  const vs = points.map(p => p.v); let lo = opts.lo ?? Math.min(...vs), hi = opts.hi ?? Math.max(...vs); if (hi === lo){ hi += 1; lo -= 1; }
+  const xs = i => pd + i*(W-2*pd)/(points.length-1), ys = v => H-pd - (v-lo)*(H-2*pd)/(hi-lo);
+  const line = points.map((p,i) => `${xs(i).toFixed(1)},${ys(p.v).toFixed(1)}`).join(" ");
+  const area = `${pd},${H-pd} ${line} ${xs(points.length-1).toFixed(1)},${H-pd}`;
+  const L = points[points.length-1];
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+    <line x1="0" x2="${W}" y1="${H/2}" y2="${H/2}" stroke="var(--line)" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>
+    <polygon points="${area}" fill="var(--accent-soft)"/>
+    <polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="2.5" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>
+    <circle cx="${xs(points.length-1)}" cy="${ys(L.v)}" r="4" fill="var(--sun)"/></svg>`;
+}
+
+/* ---------- views ---------- */
+function viewToday(){
+  const s = ui.date, d = day(s), n = dayNum(s), sc = score(s), st = streaks();
+  const pi = phaseIdx(n), mi = monthIdx(n), M = MONTHS[mi];
+  const before = n < 1, after = n > 365;
+  const isToday = s === todayStr();
+  const mt = P().monthTasks[mi] || {};
+  const h = d.h || {};
+  const phaseFill = i => { const a = i*91.25, b = a+91.25; return Math.max(0, Math.min(1, (n - a) / (b - a))); };
+
+  const areas = AREAS.map(a => {
+    const hs = P().areas[a.id]?.habits || [];
+    if (!hs.length && a.id !== "less") return "";
+    const done = hs.filter(x => h[x.id]).length;
+    return `<div class="area">
+      <div class="area-h"><span class="tag">${a.tag}</span><h3>${esc(a.name)}</h3><span class="pct">${done}/${hs.length}</span></div>
+      ${hs.map(x => `<button class="check ${h[x.id] ? "on" : ""}" data-act="habit" data-id="${esc(x.id)}" aria-pressed="${!!h[x.id]}"><span class="box">${TICK}</span><span class="t">${esc(x.label)}</span></button>`).join("")}
+      ${a.id === "less" ? `<div class="stepper"><span class="t" style="flex:1">Items let go today</span><button class="icon-btn" data-act="letgo" data-d="-1" aria-label="One fewer">−</button><span class="n">${Number(d.letgo)||0}</span><button class="icon-btn" data-act="letgo" data-d="1" aria-label="One more">+</button></div>` : ""}
+    </div>`;
+  }).join("");
+
+  const scale = (key, lo, hi) => `<div class="stack" style="gap:6px"><div class="scale">${[1,2,3,4,5].map(v => `<button class="${d[key] === v ? "sel" : ""}" data-act="scale" data-k="${key}" data-v="${v}" aria-label="${key} ${v}">${v}</button>`).join("")}</div><div class="scale-l"><span>${lo}</span><span>${hi}</span></div></div>`;
+
+  return `
+  <section class="stack" style="gap:14px;padding-top:6px">
+    <div class="row between">
+      <div class="eyebrow">${before ? "Starts in " + (1-n) + " days" : after ? "Year complete · day " + n : "Day " + String(n).padStart(3,"0") + " / 365 · " + PHASES[pi].name}</div>
+      <div class="datenav">
+        <button class="icon-btn" data-act="date" data-d="-1" aria-label="Previous day">‹</button>
+        ${isToday ? "" : `<button class="btn small" data-act="date" data-d="0">Today</button>`}
+        <button class="icon-btn" data-act="date" data-d="1" aria-label="Next day" ${isToday ? "disabled style='opacity:.35'" : ""}>›</button>
+      </div>
+    </div>
+    <div class="hero">
+      <div class="stack" style="gap:8px;min-width:0">
+        <h1>${isToday ? (P().name ? "Today, " + esc(P().name) : "Today") : esc(fmtLong(s))}</h1>
+        ${isToday ? `<p class="muted">${esc(fmtLong(s))}</p>` : ""}
+        <div class="chips"><span class="chip sun">${st.cur}-day streak</span><span class="chip">Best ${st.best}</span></div>
+      </div>
+      ${ring(sc)}
+    </div>
+    ${P().why ? `<p class="why">“${esc(P().why)}”</p>` : ""}
+    <div class="stack" style="gap:5px">
+      <div class="phases">${PHASES.map((p,i) => `<div class="phase"><b style="transform:scaleX(${phaseFill(i)})"></b></div>`).join("")}</div>
+      <div class="phase-l">${PHASES.map((p,i) => `<span class="${i === pi ? "cur" : ""}">${p.name}</span>`).join("")}</div>
+    </div>
+  </section>
+
+  <section class="card focus">
+    <div class="eyebrow">Month ${mi+1} focus</div>
+    <h2>${esc(M.t)}</h2>
+    <p>${esc(M.b)}</p>
+    <div>${M.tasks.map((t,i) => `<button class="check ${mt[i] ? "on" : ""}" data-act="mtask" data-m="${mi}" data-i="${i}" aria-pressed="${!!mt[i]}"><span class="box">${TICK}</span><span class="t">${esc(t)}</span></button>`).join("")}</div>
+  </section>
+
+  <section class="card">
+    <div class="row between"><h2>Daily habits</h2><span class="mono muted" style="font-size:.85rem">${allHabits().filter(x => h[x.id]).length} of ${allHabits().length}</span></div>
+    <div>${areas}</div>
+  </section>
+
+  <section class="card">
+    <h2>Check-in</h2>
+    <div class="grid2">
+      <div class="f"><span>Mood</span>${scale("mood","Low","Great")}</div>
+      <div class="f"><span>Energy</span>${scale("energy","Drained","Buzzing")}</div>
+    </div>
+    <label class="f"><span>Hours slept</span><input type="number" id="f-sleep" min="0" max="16" step="0.5" inputmode="decimal" value="${esc(d.sleep ?? "")}" placeholder="7.5"></label>
+    <label class="f"><span>One thing I'm grateful for</span><input type="text" id="f-grat" value="${esc(d.grat || "")}" placeholder="Morning coffee with the kids"></label>
+    <label class="f"><span>Notes</span><textarea id="f-note" placeholder="What went well, what got in the way">${esc(d.note || "")}</textarea></label>
+  </section>`;
+}
+
+function viewYear(){
+  const st = streaks(), t = todayStr(), start = P().startDate;
+  const logged = Object.keys(state.days).filter(k => score(k) > 0 || state.days[k].mood).length;
+  const booksDone = P().books.filter(b => b.status === "done").length;
+  const lead = (parse(start).getDay()+6)%7;
+  let cells = "";
+  for (let i = 0; i < lead; i++) cells += `<i style="visibility:hidden"></i>`;
+  for (let i = 0; i < 365; i++){
+    const s = addDays(start, i);
+    const fut = diffDays(t, s) > 0;
+    const sc = score(s);
+    cells += `<i class="${fut ? "fut" : "l"+level(sc)} ${s === t ? "today" : ""}" title="Day ${i+1} · ${fmtShort(s)} · ${Math.round(sc*100)}%"></i>`;
+  }
+  const last30 = []; const moods = [];
+  for (let i = 29; i >= 0; i--){ const s = addDays(t, -i); if (diffDays(start, s) < 0) continue; const d = day(s); if (d.mood) moods.push({v:d.mood}); last30.push(s); }
+  const ws = P().weights.slice().sort((a,b) => a.d < b.d ? -1 : 1);
+  const n = Math.max(1, Math.min(365, dayNum(t)));
+
+  return `
+  <section class="stack" style="gap:6px;padding-top:6px">
+    <div class="eyebrow">Started ${esc(fmtShort(start))} · ${Math.round(n/365*100)}% of the year</div>
+    <h1>Your year so far</h1>
+  </section>
+  <section class="tiles">
+    <div class="tile"><div class="v">${st.cur}</div><div class="k">Current streak</div></div>
+    <div class="tile"><div class="v">${st.best}</div><div class="k">Best streak</div></div>
+    <div class="tile"><div class="v">${logged}</div><div class="k">Days logged</div></div>
+    <div class="tile"><div class="v">${itemsLetGo()}</div><div class="k">Items let go</div></div>
+    <div class="tile"><div class="v">${booksDone}</div><div class="k">Books finished</div></div>
+    <div class="tile"><div class="v">${esc(money(income()))}</div><div class="k">Side-hustle income</div></div>
+  </section>
+  <section class="card">
+    <div class="row between"><h2>365 days</h2>
+      <div class="legend">Less <i style="background:var(--h0)"></i><i style="background:var(--h1)"></i><i style="background:var(--h2)"></i><i style="background:var(--h3)"></i><i style="background:var(--h4)"></i> More</div></div>
+    <div class="heat-wrap"><div class="heat">${cells}</div></div>
+    <p class="muted" style="font-size:.85rem">Each square is one day, shaded by how many habits you ticked. A streak counts days at 50% or more.</p>
+  </section>
+  <section class="card">
+    <h2>Last 30 days by area</h2>
+    <div class="bars">${AREAS.map(a => { const r = areaRate(a.id); return `<div class="bar"><span>${esc(a.name.split(" ")[0])}</span><div class="track"><div class="fill" style="width:${Math.round(r*100)}%"></div></div><span class="num">${Math.round(r*100)}%</span></div>`; }).join("")}</div>
+  </section>
+  <section class="grid2">
+    <div class="card"><div class="row between"><h3>Mood, last 30 days</h3><span class="mono muted" style="font-size:.8rem">${moods.length ? "avg " + (moods.reduce((a,b) => a+b.v, 0)/moods.length).toFixed(1) : ""}</span></div>${spark(moods,{lo:1,hi:5, empty:"Rate your mood on the Today tab to see it here."})}</div>
+    <div class="card"><div class="row between"><h3>Body weight</h3><span class="mono muted" style="font-size:.8rem">${ws.length ? esc(ws[ws.length-1].v + " " + P().unit) : ""}</span></div>${spark(ws.map(w => ({v:Number(w.v)})),{empty:"Log your weight on the Areas tab."})}</div>
+  </section>`;
+}
+
+function viewAreas(){
+  const p = P();
+  const cards = AREAS.map(a => {
+    const ar = p.areas[a.id] || {goal:"", habits:[]};
+    return `<details class="card area-card" data-area="${a.id}">
+      <summary><span class="tag">${a.tag}</span><h3>${esc(a.name)}</h3><span class="mono muted" style="font-size:.8rem;margin-left:auto">${Math.round(areaRate(a.id)*100)}%</span><span class="chev" aria-hidden="true">›</span></summary>
+      <p class="goal-line">${esc(ar.goal || "No goal set yet.")}</p>
+      <label class="f"><span>One-year goal</span><textarea data-in="goal" data-area="${a.id}" rows="2">${esc(ar.goal)}</textarea></label>
+      <div class="stack" style="gap:4px"><span class="eyebrow">Daily habits</span>
+        <div class="list">${ar.habits.map(h => `<div class="li"><span class="grow">${esc(h.label)}</span><button class="x" data-act="delhabit" data-area="${a.id}" data-id="${esc(h.id)}" aria-label="Remove ${esc(h.label)}">×</button></div>`).join("") || `<p class="muted">No habits yet.</p>`}</div>
+        <div class="addrow"><input type="text" id="add-${a.id}" placeholder="Add a daily habit"><button class="btn small" data-act="addhabit" data-area="${a.id}">Add</button></div>
+      </div>
+    </details>`;
+  }).join("");
+
+  const books = p.books.slice().sort((a,b) => ({reading:0,want:1,done:2}[a.status] - {reading:0,want:1,done:2}[b.status]));
+  const statusLabel = {want:"To read", reading:"Reading", done:"Finished"};
+  const ws = p.weights.slice().sort((a,b) => a.d < b.d ? -1 : 1);
+  const bests = {};
+  p.lifts.forEach(l => { const k = l.ex.trim().toLowerCase(); if (!bests[k] || Number(l.w) > Number(bests[k].w)) bests[k] = l; });
+  const inc = p.income.slice().sort((a,b) => a.d < b.d ? 1 : -1);
+
+  return `
+  <section class="stack" style="gap:6px;padding-top:6px">
+    <div class="eyebrow">Ten areas · one year</div>
+    <h1>Goals and trackers</h1>
+    <p class="muted">Tap an area to set its goal and choose the habits that show up on your Today list.</p>
+  </section>
+  <section class="stack" style="gap:10px">${cards}</section>
+
+  <section class="card">
+    <div class="row between"><h2>Bookshelf</h2><span class="mono muted" style="font-size:.85rem">${p.books.filter(b => b.status === "done").length} finished</span></div>
+    <div class="addrow"><input type="text" id="book-title" placeholder="Title and author"><button class="btn small primary" data-act="addbook">Add</button></div>
+    <div class="list">${books.map(b => `<div class="li"><span class="grow">${esc(b.title)}</span><button class="pill ${b.status}" data-act="bookstatus" data-id="${b.id}" title="Change status">${statusLabel[b.status]}</button><button class="x" data-act="delbook" data-id="${b.id}" aria-label="Remove book">×</button></div>`).join("") || `<p class="muted">Add the first book you want to read this year.</p>`}</div>
+  </section>
+
+  <section class="card">
+    <div class="row between"><h2>Body</h2><span class="mono muted" style="font-size:.85rem">${ws.length ? "Start " + esc(ws[0].v) + " → now " + esc(ws[ws.length-1].v) + " " + esc(p.unit) : ""}</span></div>
+    ${spark(ws.map(w => ({v:Number(w.v)})),{empty:"Weigh in once a week, same day, same time."})}
+    <div class="addrow"><input type="number" id="w-val" step="0.1" inputmode="decimal" placeholder="Weight in ${esc(p.unit)}"><button class="btn small primary" data-act="addweight">Log today</button></div>
+    <div class="list">${ws.slice(-5).reverse().map(w => `<div class="li"><span class="mono grow">${esc(fmtShort(w.d))}</span><span class="mono">${esc(w.v)} ${esc(p.unit)}</span><button class="x" data-act="delweight" data-id="${w.id}" aria-label="Remove entry">×</button></div>`).join("")}</div>
+  </section>
+
+  <section class="card">
+    <h2>Lifts</h2>
+    <div class="addrow3"><input type="text" id="l-ex" placeholder="Exercise, e.g. Squat"><input type="number" id="l-w" step="0.5" inputmode="decimal" placeholder="${esc(p.unit)}"><input type="number" id="l-r" step="1" inputmode="numeric" placeholder="Reps"><button class="btn small primary" data-act="addlift">Log</button></div>
+    <div class="list">${Object.values(bests).map(l => `<div class="li"><span class="grow">${esc(l.ex)}</span><span class="pill done">Best</span><span class="mono">${esc(l.w)} ${esc(p.unit)} × ${esc(l.r)}</span></div>`).join("") || `<p class="muted">Log a set and your personal bests appear here.</p>`}</div>
+    ${p.lifts.length ? `<div class="list">${p.lifts.slice(-5).reverse().map(l => `<div class="li"><span class="mono muted">${esc(fmtShort(l.d))}</span><span class="grow">${esc(l.ex)}</span><span class="mono">${esc(l.w)} × ${esc(l.r)}</span><button class="x" data-act="dellift" data-id="${l.id}" aria-label="Remove set">×</button></div>`).join("")}</div>` : ""}
+  </section>
+
+  <section class="card">
+    <div class="row between"><h2>Side-hustle income</h2><span class="mono" style="font-weight:700">${esc(money(income()))}</span></div>
+    <div class="addrow3"><input type="text" id="i-src" placeholder="Source, e.g. Etsy sale"><input type="number" id="i-v" step="0.01" inputmode="decimal" placeholder="${esc(p.currency)}"><span></span><button class="btn small primary" data-act="addincome">Add</button></div>
+    <div class="list">${inc.slice(0,8).map(x => `<div class="li"><span class="mono muted">${esc(fmtShort(x.d))}</span><span class="grow">${esc(x.src)}</span><span class="mono">${esc(money(Number(x.v)))}</span><button class="x" data-act="delincome" data-id="${x.id}" aria-label="Remove entry">×</button></div>`).join("") || `<p class="muted">Every sale counts. Log the first one here.</p>`}</div>
+  </section>`;
+}
+
+function viewReview(){
+  const p = P(), wk = mondayOf(todayStr()), r = p.reviews[wk] || {};
+  const past = Object.keys(p.reviews).filter(k => k !== wk).sort().reverse();
+  const n = Math.max(1, Math.min(365, dayNum(todayStr()))), mi = monthIdx(n);
+  return `
+  <section class="stack" style="gap:6px;padding-top:6px">
+    <div class="eyebrow">Week of ${esc(fmtShort(wk))}</div>
+    <h1>Weekly review</h1>
+    <p class="muted">Ten minutes every Sunday. Look back, adjust, and choose one thing to focus on.</p>
+  </section>
+  <section class="card">
+    <label class="f"><span>Wins this week</span><textarea data-in="rev" data-k="wins" placeholder="Three gym sessions, cooked every night">${esc(r.wins || "")}</textarea></label>
+    <label class="f"><span>What got in the way</span><textarea data-in="rev" data-k="lessons" placeholder="Late nights on my phone">${esc(r.lessons || "")}</textarea></label>
+    <label class="f"><span>One focus for next week</span><input type="text" data-in="rev" data-k="focus" value="${esc(r.focus || "")}" placeholder="Bed by 10:30pm"></label>
+  </section>
+  ${past.length ? `<section class="card"><h2>Past reviews</h2>${past.map(k => { const x = p.reviews[k]; return `<div class="review stack" style="gap:4px"><span class="eyebrow">Week of ${esc(fmtShort(k))}</span>${x.wins ? `<p><b>Wins:</b> ${esc(x.wins)}</p>` : ""}${x.lessons ? `<p><b>In the way:</b> ${esc(x.lessons)}</p>` : ""}${x.focus ? `<p><b>Focus:</b> ${esc(x.focus)}</p>` : ""}</div>`; }).join("")}</section>` : ""}
+
+  <section class="card">
+    <h2>The year plan</h2>
+    <div class="list">${MONTHS.map((m,i) => `<div class="month ${i === mi ? "cur" : ""}"><span class="mn">M${String(i+1).padStart(2,"0")}</span><div class="stack" style="gap:2px"><h3>${esc(m.t)}</h3><p class="muted" style="font-size:.9rem">${esc(m.b)}</p></div></div>`).join("")}</div>
+  </section>
+
+  <section class="card">
+    <h2>Settings</h2>
+    <div class="grid2">
+      <label class="f"><span>Your name</span><input type="text" data-in="set" data-k="name" value="${esc(p.name)}" placeholder="Optional"></label>
+      <label class="f"><span>Day one</span><input type="date" id="set-start" value="${esc(p.startDate)}"></label>
+      <label class="f"><span>Currency symbol</span><input type="text" data-in="set" data-k="currency" value="${esc(p.currency)}" maxlength="4"></label>
+      <label class="f"><span>Weight unit</span><select id="set-unit"><option ${p.unit === "kg" ? "selected" : ""}>kg</option><option ${p.unit === "lb" ? "selected" : ""}>lb</option><option ${p.unit === "st" ? "selected" : ""}>st</option></select></label>
+    </div>
+    <label class="f"><span>Why I'm doing this</span><textarea data-in="set" data-k="why" rows="2">${esc(p.why)}</textarea></label>
+    <div class="row">
+      <button class="btn small" data-act="export">Copy backup</button>
+      <button class="btn small" data-act="toggleimport">${ui.showImport ? "Cancel restore" : "Restore from backup"}</button>
+      <button class="btn small danger ghost" data-act="askreset">Start over</button>
+    </div>
+    ${ui.showImport ? `<div class="stack"><textarea id="import-box" placeholder="Paste a backup here"></textarea><button class="btn small primary" data-act="import">Restore</button></div>` : ""}
+    ${ui.confirmReset ? `<div class="confirm"><p><b>Erase every day, goal and log?</b> This cannot be undone.</p><div class="row"><button class="btn small danger" data-act="reset">Erase everything</button><button class="btn small" data-act="cancelreset">Keep my data</button></div></div>` : ""}
+    <textarea id="export-box" hidden readonly></textarea>
+  </section>`;
+}
+
+/* ---------- render ---------- */
+const TABS = [["today","Today"],["year","Year"],["areas","Areas"],["review","Review"]];
+function render(){
+  const y = window.scrollY;
+  const open = [...main.querySelectorAll("details[open]")].map(d => d.dataset.area);
+  main.innerHTML = ui.tab === "year" ? viewYear() : ui.tab === "areas" ? viewAreas() : ui.tab === "review" ? viewReview() : viewToday();
+  open.forEach(a => { const d = main.querySelector(`details[data-area="${a}"]`); if (d) d.open = true; });
+  document.getElementById("tabs").innerHTML = TABS.map(([k,l]) => `<button class="${ui.tab === k ? "act" : ""}" data-tab="${k}" aria-current="${ui.tab === k ? "page" : "false"}">${ICONS[k]}<span>${l}</span></button>`).join("");
+  window.scrollTo(0, y);
+  if (ui.tab === "year"){ const hw = main.querySelector(".heat-wrap"), td = main.querySelector(".heat .today"); if (hw && td) hw.scrollLeft = Math.max(0, td.offsetLeft - hw.clientWidth/2); }
+}
+
+/* ---------- events ---------- */
+document.getElementById("tabs").addEventListener("click", e => {
+  const b = e.target.closest("[data-tab]"); if (!b) return;
+  ui.tab = b.dataset.tab; ui.confirmReset = false; ui.showImport = false;
+  try { localStorage.setItem(LS+".tab", ui.tab); } catch(_) {}
+  render(); window.scrollTo(0,0);
+});
+
+main.addEventListener("click", e => {
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  const a = b.dataset.act, p = P(), s = ui.date;
+  const val = id => (document.getElementById(id)?.value || "").trim();
+  switch (a){
+    case "habit": { const d = ensureDay(s); d.h[b.dataset.id] = !d.h[b.dataset.id]; if (!d.h[b.dataset.id]) delete d.h[b.dataset.id]; markDirty("d"+s); break; }
+    case "letgo": { const d = ensureDay(s); d.letgo = Math.max(0, (Number(d.letgo)||0) + Number(b.dataset.d)); markDirty("d"+s); break; }
+    case "scale": { const d = ensureDay(s); const k = b.dataset.k, v = Number(b.dataset.v); if (d[k] === v) delete d[k]; else d[k] = v; markDirty("d"+s); break; }
+    case "mtask": { const m = b.dataset.m, i = b.dataset.i; p.monthTasks[m] = p.monthTasks[m] || {}; p.monthTasks[m][i] = !p.monthTasks[m][i]; markDirty("profile"); break; }
+    case "date": { const dd = Number(b.dataset.d); ui.date = dd === 0 ? todayStr() : addDays(ui.date, dd); if (diffDays(todayStr(), ui.date) > 0) ui.date = todayStr(); break; }
+    case "addhabit": { const v = val("add-"+b.dataset.area); if (!v) return; p.areas[b.dataset.area].habits.push({id:"h"+uid36(), label:v}); markDirty("profile"); toast("Habit added to Today"); break; }
+    case "delhabit": { const ar = p.areas[b.dataset.area]; ar.habits = ar.habits.filter(h => h.id !== b.dataset.id); markDirty("profile"); break; }
+    case "addbook": { const v = val("book-title"); if (!v) return; p.books.push({id:uid36(), title:v, status:"want"}); markDirty("profile"); break; }
+    case "bookstatus": { const bk = p.books.find(x => x.id === b.dataset.id); if (!bk) return; bk.status = {want:"reading", reading:"done", done:"want"}[bk.status]; if (bk.status === "done"){ bk.finished = todayStr(); toast("Book finished. Nice."); } markDirty("profile"); break; }
+    case "delbook": p.books = p.books.filter(x => x.id !== b.dataset.id); markDirty("profile"); break;
+    case "addweight": { const v = parseFloat(val("w-val")); if (!isFinite(v)) return; p.weights = p.weights.filter(w => w.d !== todayStr()); p.weights.push({id:uid36(), d:todayStr(), v}); markDirty("profile"); toast("Weight logged"); break; }
+    case "delweight": p.weights = p.weights.filter(x => x.id !== b.dataset.id); markDirty("profile"); break;
+    case "addlift": { const ex = val("l-ex"), w = parseFloat(val("l-w")), r = parseInt(val("l-r"), 10); if (!ex || !isFinite(w) || !isFinite(r)) { toast("Add an exercise, weight and reps"); return; } p.lifts.push({id:uid36(), d:todayStr(), ex, w, r}); markDirty("profile"); toast("Set logged"); break; }
+    case "dellift": p.lifts = p.lifts.filter(x => x.id !== b.dataset.id); markDirty("profile"); break;
+    case "addincome": { const src = val("i-src") || "Income", v = parseFloat(val("i-v")); if (!isFinite(v)) { toast("Enter an amount"); return; } p.income.push({id:uid36(), d:todayStr(), src, v}); markDirty("profile"); toast("Income added"); break; }
+    case "delincome": p.income = p.income.filter(x => x.id !== b.dataset.id); markDirty("profile"); break;
+    case "export": {
+      const txt = JSON.stringify(state); const box = document.getElementById("export-box");
+      const fallback = () => { box.hidden = false; box.value = txt; box.select(); toast("Select all and copy the text"); };
+      try { navigator.clipboard.writeText(txt).then(() => toast("Backup copied"), fallback); } catch(_) { fallback(); }
+      return;
+    }
+    case "toggleimport": ui.showImport = !ui.showImport; ui.confirmReset = false; break;
+    case "import": {
+      try { const s2 = JSON.parse(val("import-box")); if (!s2 || !s2.profile) throw 0;
+        state = { profile: normalize(s2.profile), days: s2.days || {} };
+        markDirty("profile"); Object.keys(state.days).forEach(k => dirty.add("d"+k)); ui.showImport = false; toast("Backup restored");
+      } catch(_) { toast("That doesn't look like a Year One backup"); return; }
+      break;
+    }
+    case "askreset": ui.confirmReset = true; ui.showImport = false; break;
+    case "cancelreset": ui.confirmReset = false; break;
+    case "reset": {
+      const old = Object.keys(state.days);
+      state = { profile: defaultProfile(), days: {} }; ui.confirmReset = false; ui.date = todayStr();
+      markDirty("profile");
+      if (col) old.forEach(k => col.doc("d"+k).delete().catch(() => {}));
+      toast("Fresh start. Day one is today.");
+      break;
+    }
+    default: return;
+  }
+  render();
+});
+
+main.addEventListener("input", e => {
+  const t = e.target, p = P(), s = ui.date;
+  if (t.id === "f-sleep"){ const d = ensureDay(s); const v = parseFloat(t.value); if (isFinite(v)) d.sleep = v; else delete d.sleep; markDirty("d"+s); return; }
+  if (t.id === "f-grat"){ ensureDay(s).grat = t.value; markDirty("d"+s); return; }
+  if (t.id === "f-note"){ ensureDay(s).note = t.value; markDirty("d"+s); return; }
+  const k = t.dataset.in; if (!k) return;
+  if (k === "goal"){ p.areas[t.dataset.area].goal = t.value; const g = t.closest("details").querySelector(".goal-line"); g.textContent = t.value || "No goal set yet."; }
+  else if (k === "rev"){ const wk = mondayOf(todayStr()); p.reviews[wk] = p.reviews[wk] || {}; p.reviews[wk][t.dataset.k] = t.value; }
+  else if (k === "set"){ p[t.dataset.k] = t.value; }
+  markDirty("profile");
+});
+main.addEventListener("change", e => {
+  const t = e.target, p = P();
+  if (t.id === "set-start" && t.value){ p.startDate = t.value; markDirty("profile"); toast("Day one set to " + fmtShort(t.value)); }
+  if (t.id === "set-unit"){ p.unit = t.value; markDirty("profile"); }
+});
+main.addEventListener("keydown", e => {
+  if (e.key !== "Enter" || e.target.tagName !== "INPUT") return;
+  const btn = e.target.closest(".addrow, .addrow3")?.querySelector("[data-act]");
+  if (btn){ e.preventDefault(); btn.click(); }
+});
+document.addEventListener("visibilitychange", () => { if (document.hidden) flush(); else if (ui.date !== todayStr() && ui.tab === "today") { ui.date = todayStr(); render(); } });
+
+render();
+connect();
+})();
+</script>
