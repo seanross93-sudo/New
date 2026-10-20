@@ -27,10 +27,12 @@ export function IconDashboard(props: IconProps) {
 export function IconList(props: IconProps) {
   return (
     <svg {...base} {...props}>
-      <line x1="4" y1="6" x2="20" y2="6" />
-      <line x1="4" y1="12" x2="20" y2="12" />
-      <line x1="4" y1="18" x2="20" y2="18" />
-      <circle cx="4" cy="6" r="0.1" />
+      <line x1="9" y1="6" x2="20" y2="6" />
+      <line x1="9" y1="12" x2="20" y2="12" />
+      <line x1="9" y1="18" x2="20" y2="18" />
+      <line x1="4" y1="6" x2="5" y2="6" />
+      <line x1="4" y1="12" x2="5" y2="12" />
+      <line x1="4" y1="18" x2="5" y2="18" />
     </svg>
   );
 }
@@ -150,6 +152,16 @@ export function IconArrowDown(props: IconProps) {
     <svg {...base} {...props}>
       <line x1="12" y1="5" x2="12" y2="19" />
       <path d="M6 13l6 6 6-6" />
+    </svg>
+  );
+}
+
+export function LogoMark(props: IconProps) {
+  return (
+    <svg width={20} height={20} viewBox="0 0 20 20" fill="none" aria-hidden="true" {...props}>
+      <rect x="1" y="1" width="18" height="18" rx="4" fill="currentColor" />
+      <path d="M6 5.5v9h8" stroke="var(--on-ink)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9.5 11h4.5" stroke="var(--on-ink)" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }

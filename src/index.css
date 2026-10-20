@@ -1,16 +1,23 @@
 @import "tailwindcss";
 
+/*
+ * Design tokens. Raw values live on :root so they can be swapped per theme;
+ * @theme maps them to Tailwind utilities (bg-surface, text-fg, border-line…).
+ */
 :root {
   color-scheme: light;
 
-  --surface-0: #f9f9f7;
+  --surface-0: #f7f7f5;
   --surface-1: #ffffff;
-  --surface-2: #f2f2ef;
-  --text-primary: #0b0b0b;
-  --text-secondary: #52514e;
-  --text-muted: #898781;
-  --border: #e1e0d9;
-  --border-strong: #c3c2b7;
+  --surface-2: #f0f0ed;
+  --text-primary: #111110;
+  --text-secondary: #4a4945;
+  --text-muted: #77756f;
+  --border: #e4e3dd;
+  --border-strong: #cdccc4;
+
+  --accent: #1f5fbf;
+  --on-ink: #ffffff;
 
   --series-1: #2a78d6;
   --series-2: #eb6834;
@@ -22,70 +29,90 @@
   --series-8: #e34948;
 
   --status-good: #0ca30c;
-  --status-good-text: #006300;
-  --status-warning: #fab219;
-  --status-serious: #ec835a;
-  --status-critical: #d03b3b;
+  --status-good-text: #006b00;
+  --status-warning: #f0a500;
+  --status-warning-text: #8a5a00;
+  --status-critical: #c93535;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --surface-0: #0d0d0d;
-    --surface-1: #1a1a19;
-    --surface-2: #202020;
-    --text-primary: #ffffff;
-    --text-secondary: #c3c2b7;
-    --text-muted: #898781;
-    --border: #2c2c2a;
-    --border-strong: #383835;
+    --surface-0: #0f0f0e;
+    --surface-1: #181817;
+    --surface-2: #232321;
+    --text-primary: #f4f4f2;
+    --text-secondary: #c9c8c1;
+    --text-muted: #9c9a93;
+    --border: #2e2e2b;
+    --border-strong: #42423e;
+
+    --accent: #6ea4f0;
+    --on-ink: #111110;
 
     --series-1: #3987e5;
     --series-2: #d95926;
     --series-3: #199e70;
     --series-4: #c98500;
     --series-5: #d55181;
-    --series-6: #008300;
+    --series-6: #1f9a1f;
     --series-7: #9085e9;
     --series-8: #e66767;
 
-    --status-good: #0ca30c;
-    --status-good-text: #0ca30c;
-    --status-warning: #fab219;
-    --status-serious: #ec835a;
-    --status-critical: #e66767;
+    --status-good: #22b322;
+    --status-good-text: #4cc94c;
+    --status-warning: #f0a500;
+    --status-warning-text: #f2b84b;
+    --status-critical: #ef7373;
   }
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --surface-0: #0d0d0d;
-  --surface-1: #1a1a19;
-  --surface-2: #202020;
-  --text-primary: #ffffff;
-  --text-secondary: #c3c2b7;
-  --text-muted: #898781;
-  --border: #2c2c2a;
-  --border-strong: #383835;
+  --surface-0: #0f0f0e;
+  --surface-1: #181817;
+  --surface-2: #232321;
+  --text-primary: #f4f4f2;
+  --text-secondary: #c9c8c1;
+  --text-muted: #9c9a93;
+  --border: #2e2e2b;
+  --border-strong: #42423e;
+
+  --accent: #6ea4f0;
+  --on-ink: #111110;
 
   --series-1: #3987e5;
   --series-2: #d95926;
   --series-3: #199e70;
   --series-4: #c98500;
   --series-5: #d55181;
-  --series-6: #008300;
+  --series-6: #1f9a1f;
   --series-7: #9085e9;
   --series-8: #e66767;
 
-  --status-good: #0ca30c;
-  --status-good-text: #0ca30c;
-  --status-warning: #fab219;
-  --status-serious: #ec835a;
-  --status-critical: #e66767;
+  --status-good: #22b322;
+  --status-good-text: #4cc94c;
+  --status-warning: #f0a500;
+  --status-warning-text: #f2b84b;
+  --status-critical: #ef7373;
 }
 
-* {
-  box-sizing: border-box;
+@theme inline {
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+
+  --color-canvas: var(--surface-0);
+  --color-surface: var(--surface-1);
+  --color-subtle: var(--surface-2);
+  --color-fg: var(--text-primary);
+  --color-fg-secondary: var(--text-secondary);
+  --color-fg-muted: var(--text-muted);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-accent: var(--accent);
+  --color-on-ink: var(--on-ink);
+  --color-positive: var(--status-good-text);
+  --color-caution: var(--status-warning-text);
+  --color-negative: var(--status-critical);
 }
 
 html,
@@ -96,15 +123,22 @@ body,
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.45;
   background: var(--surface-0);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
 }
 
 ::selection {
-  background: var(--series-1);
-  color: white;
+  background: var(--accent);
+  color: var(--on-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .tabular-nums {

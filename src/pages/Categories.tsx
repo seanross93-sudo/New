@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useStore } from "../lib/store";
-import { Card } from "../components/Card";
-import { Button } from "../components/Form";
+import { Card, PageHeader } from "../components/Card";
+import { Button, IconButton } from "../components/Form";
 import { CategoryDot } from "../components/CategoryBadge";
 import { IconEdit, IconPlus, IconTrash } from "../components/icons";
 import { CategoryForm } from "./CategoryForm";
@@ -17,42 +17,24 @@ function CategoryList({
   onDelete: (id: string) => void;
 }) {
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col divide-y divide-line">
       {items.map((c) => (
-        <div
-          key={c.id}
-          className="group flex items-center justify-between border-b py-2.5 last:border-0"
-          style={{ borderColor: "var(--border)" }}
-        >
-          <span className="inline-flex items-center gap-2 text-[13.5px] font-medium" style={{ color: "var(--text-primary)" }}>
+        <div key={c.id} className="flex items-center justify-between py-2 first:pt-0 last:pb-0">
+          <span className="inline-flex items-center gap-2 text-sm font-medium text-fg">
             <CategoryDot category={c} />
             {c.name}
           </span>
-          <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-            <button
-              aria-label="Edit"
-              onClick={() => onEdit(c)}
-              className="rounded-md p-1.5"
-              style={{ color: "var(--text-muted)" }}
-            >
+          <div className="flex items-center gap-0.5">
+            <IconButton label={`Edit ${c.name}`} onClick={() => onEdit(c)}>
               <IconEdit width={15} height={15} />
-            </button>
-            <button
-              aria-label="Delete"
-              onClick={() => onDelete(c.id)}
-              className="rounded-md p-1.5"
-              style={{ color: "var(--status-critical)" }}
-            >
+            </IconButton>
+            <IconButton label={`Delete ${c.name}`} tone="danger" onClick={() => onDelete(c.id)}>
               <IconTrash width={15} height={15} />
-            </button>
+            </IconButton>
           </div>
         </div>
       ))}
-      {items.length === 0 && (
-        <p className="py-4 text-[13px]" style={{ color: "var(--text-muted)" }}>
-          No categories yet.
-        </p>
-      )}
+      {items.length === 0 && <p className="py-4 text-sm text-fg-muted">No categories yet.</p>}
     </div>
   );
 }
@@ -77,29 +59,28 @@ export function Categories() {
   const expense = state.categories.filter((c) => c.kind === "expense");
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex items-center justify-between">
-        <h1 className="text-[20px] font-semibold" style={{ color: "var(--text-primary)" }}>
-          Categories
-        </h1>
-        <Button
-          variant="primary"
-          className="inline-flex items-center gap-1.5"
-          onClick={() => {
-            setEditing(null);
-            setShowForm(true);
-          }}
-        >
-          <IconPlus width={15} height={15} />
-          Add category
-        </Button>
-      </div>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Categories"
+        action={
+          <Button
+            variant="primary"
+            onClick={() => {
+              setEditing(null);
+              setShowForm(true);
+            }}
+          >
+            <IconPlus width={16} height={16} />
+            Add category
+          </Button>
+        }
+      />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card title="Expense categories">
+        <Card title="Expenses">
           <CategoryList items={expense} onEdit={handleEdit} onDelete={handleDelete} />
         </Card>
-        <Card title="Income categories">
+        <Card title="Income">
           <CategoryList items={income} onEdit={handleEdit} onDelete={handleDelete} />
         </Card>
       </div>

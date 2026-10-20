@@ -65,7 +65,7 @@ export function AccountForm({ account, onClose }: { account?: Account; onClose: 
             required
           />
         </Field>
-        <div className="grid grid-cols-2 gap-x-3">
+        <div className="grid grid-cols-2 gap-x-4">
           <Field label="Type">
             <Select value={type} onChange={(e) => setType(e.target.value as AccountType)}>
               {Object.entries(TYPE_LABELS).map(([value, label]) => (
@@ -86,7 +86,7 @@ export function AccountForm({ account, onClose }: { account?: Account; onClose: 
           </Field>
         </div>
         {error && (
-          <p className="text-[12.5px]" style={{ color: "var(--status-critical)" }}>
+          <p role="alert" className="mb-4 text-xs text-negative">
             {error}
           </p>
         )}

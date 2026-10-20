@@ -12,9 +12,9 @@ export default function App() {
   const [page, setPage] = useState<Page>("dashboard");
 
   return (
-    <div className="flex min-h-screen flex-col md:flex-row" style={{ background: "var(--surface-0)" }}>
+    <div className="flex min-h-screen flex-col bg-canvas md:flex-row">
       <Sidebar page={page} onNavigate={setPage} />
-      <main className="flex-1 px-4 py-6 sm:px-8 sm:py-8">
+      <main className="min-w-0 flex-1 px-4 py-6 sm:px-8 sm:py-10">
         <div className="mx-auto max-w-5xl">
           {page === "dashboard" && <Dashboard onNavigate={setPage} />}
           {page === "transactions" && <Transactions />}

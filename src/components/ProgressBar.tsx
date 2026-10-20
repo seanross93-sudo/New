@@ -10,22 +10,18 @@ export function ProgressBar({
       ? "var(--status-critical)"
       : status === "warning"
         ? "var(--status-warning)"
-        : "var(--status-good)";
+        : "var(--text-secondary)";
   const width = Math.min(100, Math.max(0, pct * 100));
 
   return (
     <div
-      className="h-2 w-full overflow-hidden rounded-full"
-      style={{ background: "var(--surface-2)" }}
+      className="h-1.5 w-full overflow-hidden rounded-full bg-subtle"
       role="progressbar"
       aria-valuenow={Math.round(width)}
       aria-valuemin={0}
       aria-valuemax={100}
     >
-      <div
-        className="h-full rounded-full transition-[width]"
-        style={{ width: `${width}%`, background: color }}
-      />
+      <div className="h-full rounded-full" style={{ width: `${width}%`, background: color }} />
     </div>
   );
 }

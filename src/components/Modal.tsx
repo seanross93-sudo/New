@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from "react";
 import { IconClose } from "./icons";
+import { IconButton } from "./Form";
 
 export function Modal({
   title,
@@ -22,41 +23,25 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(11,11,11,0.45)" }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
-        className="w-full max-w-md rounded-xl border shadow-xl"
-        style={{ borderColor: "var(--border)", background: "var(--surface-1)" }}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className="w-full max-w-md rounded-lg border border-line bg-surface shadow-lg"
       >
-        <div
-          className="flex items-center justify-between border-b px-5 py-4"
-          style={{ borderColor: "var(--border)" }}
-        >
-          <h2 className="text-[15px] font-semibold" style={{ color: "var(--text-primary)" }}>
-            {title}
-          </h2>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="rounded-md p-1"
-            style={{ color: "var(--text-muted)" }}
-          >
+        <div className="flex items-center justify-between border-b border-line px-5 py-4">
+          <h2 className="text-base font-semibold text-fg">{title}</h2>
+          <IconButton label="Close" onClick={onClose}>
             <IconClose width={16} height={16} />
-          </button>
+          </IconButton>
         </div>
-        <div className="px-5 py-4">{children}</div>
-        {footer && (
-          <div
-            className="flex justify-end gap-2 border-t px-5 py-4"
-            style={{ borderColor: "var(--border)" }}
-          >
-            {footer}
-          </div>
-        )}
+        <div className="px-5 pt-5 pb-1">{children}</div>
+        {footer && <div className="flex justify-end gap-2 border-t border-line px-5 py-4">{footer}</div>}
       </div>
     </div>
   );

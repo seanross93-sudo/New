@@ -73,18 +73,17 @@ export function CategoryForm({ category, onClose }: { category?: Category; onClo
                 type="button"
                 aria-label={`Color ${s}`}
                 onClick={() => setSlot(s)}
-                className="h-7 w-7 rounded-full transition-transform"
-                style={{
-                  background: seriesVar(s),
-                  outline: slot === s ? "2px solid var(--text-primary)" : "none",
-                  outlineOffset: 2,
-                }}
+                aria-pressed={slot === s}
+                className={`h-7 w-7 rounded-full ring-offset-2 ring-offset-surface ${
+                  slot === s ? "ring-2 ring-fg" : ""
+                }`}
+                style={{ background: seriesVar(s) }}
               />
             ))}
           </div>
         </Field>
         {error && (
-          <p className="text-[12.5px]" style={{ color: "var(--status-critical)" }}>
+          <p role="alert" className="mb-4 text-xs text-negative">
             {error}
           </p>
         )}

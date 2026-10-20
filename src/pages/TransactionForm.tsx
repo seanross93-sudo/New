@@ -61,7 +61,7 @@ export function TransactionForm({
       }
     >
       <form id="tx-form" onSubmit={handleSubmit}>
-        <div className="grid grid-cols-2 gap-x-3">
+        <div className="grid grid-cols-2 gap-x-4">
           <Field label="Date">
             <TextInput type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
           </Field>
@@ -87,7 +87,7 @@ export function TransactionForm({
           />
         </Field>
 
-        <div className="grid grid-cols-2 gap-x-3">
+        <div className="grid grid-cols-2 gap-x-4">
           <Field label="Account">
             <Select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
               {state.accounts.map((a) => (
@@ -122,7 +122,7 @@ export function TransactionForm({
         </Field>
 
         {error && (
-          <p className="text-[12.5px]" style={{ color: "var(--status-critical)" }}>
+          <p role="alert" className="mb-4 text-xs text-negative">
             {error}
           </p>
         )}

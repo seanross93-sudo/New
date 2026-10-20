@@ -17,11 +17,8 @@ export function SpendingChart({ data }: { data: CategorySpend[] }) {
 
   if (rows.length === 0) {
     return (
-      <div
-        className="flex h-56 items-center justify-center text-[13px]"
-        style={{ color: "var(--text-muted)" }}
-      >
-        No expenses recorded this month yet.
+      <div className="flex h-56 items-center justify-center text-sm text-fg-muted">
+        No expenses recorded this month.
       </div>
     );
   }
@@ -33,15 +30,15 @@ export function SpendingChart({ data }: { data: CategorySpend[] }) {
         <XAxis
           type="number"
           tickFormatter={(v) => formatCurrency(v)}
-          tick={{ fill: "var(--text-muted)", fontSize: 11 }}
-          axisLine={{ stroke: "var(--border-strong)" }}
+          tick={{ fill: "var(--text-muted)", fontSize: 12 }}
+          axisLine={false}
           tickLine={false}
         />
         <YAxis
           type="category"
           dataKey="name"
           width={92}
-          tick={{ fill: "var(--text-secondary)", fontSize: 12.5 }}
+          tick={{ fill: "var(--text-secondary)", fontSize: 12 }}
           axisLine={false}
           tickLine={false}
         />
@@ -51,8 +48,8 @@ export function SpendingChart({ data }: { data: CategorySpend[] }) {
           contentStyle={{
             background: "var(--surface-1)",
             border: "1px solid var(--border)",
-            borderRadius: 8,
-            fontSize: 12.5,
+            borderRadius: 6,
+            fontSize: 12,
             color: "var(--text-primary)",
           }}
           labelStyle={{ color: "var(--text-secondary)" }}
