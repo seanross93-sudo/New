@@ -1,10 +1,10 @@
-# Argos stock bot
+# Argos and John Lewis stock bot
 
-Watches Argos products. When one comes back in stock (or drops to your target
-price) it sends a notification to your phone, then adds it to your trolley in a
-signed-in browser. You press checkout and approve the payment yourself.
+Watches Argos and John Lewis products. When one comes back in stock (or drops to your target
+price) it sends a notification to your phone, then adds it to your Argos trolley or
+John Lewis basket in a signed-in browser. You press checkout and approve the payment yourself.
 
-It never stores your card details or password. Your Argos sign-in stays in the
+It never stores your card details or passwords. Your shop sign-ins stay in the
 `browser-profile` folder on your own computer.
 
 ## Setup (about 10 minutes, once)
@@ -23,14 +23,17 @@ It never stores your card details or password. Your Argos sign-in stays in the
    `sean-argos-7f3k2q9`. Anyone who knows the name can see your alerts, so
    don't use something guessable.
 5. **Add your products:** copy `config.example.json` to `config.json` and edit it:
-   - `argos`: the product link, or the catalogue number like `123/4567`
+   - `url`: the Argos or John Lewis product link. For Argos you can also use
+     the catalogue number, like `123/4567`. John Lewis links end in `/p` and
+     a number, like `johnlewis.com/product-name/p1234567`.
    - `target_price`: the most you'll pay, or `null` to alert on any price
    - `ntfy_topic`: the topic name from step 4
-6. **Sign in to Argos once:**
+6. **Sign in to each shop once:**
    ```
    python bot.py login
    ```
-   Sign in in the window that opens, then close it.
+   A window opens with an Argos tab and a John Lewis tab. Sign in on both,
+   then close the window.
 
 ## On a Mac
 
@@ -63,18 +66,18 @@ python bot.py run     # keep checking every 10 minutes (Ctrl+C to stop)
 ```
 
 Your computer has to be on and awake for `run` to keep checking. When a product
-is ready to buy, a browser window opens with it in your trolley. Finish checkout
+is ready to buy, a browser window opens with it in your trolley or basket. Finish checkout
 there, then close the window and the bot carries on.
 
-To turn off the automatic trolley step and get alerts only, set
+To turn off the automatic trolley and basket step and get alerts only, set
 `"add_to_trolley": false` in `config.json`.
 
 ## Good to know
 
 - It checks every 10 minutes by default and won't go faster than every
-  5 minutes. Checking very often can get you blocked by Argos, and automated
-  access may be against Argos's terms of use, so keep it gentle.
-- Stock shown on a product page can differ by postcode, and it may say "in
+  5 minutes. Checking very often can get you blocked, and automated access
+  may be against Argos's and John Lewis's terms of use, so keep it gentle.
+- Argos stock shown on a product page can differ by postcode, and it may say "in
   stock" when your local store or delivery area has none.
-- If Argos changes its website, the bot may report "stock unknown". Send the
+- If either shop changes its website, the bot may report "stock unknown". Send the
   output to Claude and it can update the code.

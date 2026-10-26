@@ -3,7 +3,8 @@
   "ntfy_topic": "pick-a-long-random-name-here-7f3k2",
   "add_to_trolley": true,
   "products": [
-    { "name": "Product you want", "argos": "https://www.argos.co.uk/product/1234567", "target_price": 249.99 },
-    { "name": "Another product, any price", "argos": "123/4567", "target_price": null }
+    { "name": "Argos product you want", "url": "https://www.argos.co.uk/product/1234567", "target_price": 249.99 },
+    { "name": "Argos product by catalogue number", "url": "123/4567", "target_price": null },
+    { "name": "John Lewis product", "url": "https://www.johnlewis.com/product-name/p1234567", "target_price": 99.00 }
   ]
 }
