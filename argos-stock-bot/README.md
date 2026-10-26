@@ -32,6 +32,29 @@ It never stores your card details or password. Your Argos sign-in stays in the
    ```
    Sign in in the window that opens, then close it.
 
+## On a Mac
+
+Use Terminal (Applications > Utilities) and type `python3` and `pip3` where the
+steps say `python` and `pip`:
+
+```
+cd ~/Downloads/New-claude-argos-stock-bot/argos-stock-bot
+python3 -m pip install -r requirements.txt
+python3 -m playwright install chromium
+cp config.example.json config.json
+open -e config.json          # edit your products, save, close
+python3 bot.py login
+python3 bot.py check
+caffeinate -i python3 bot.py run
+```
+
+`caffeinate -i` stops the Mac from going to sleep while the bot runs. Keep it
+plugged in, and leave the lid open unless it's connected to an external
+display, because closing the lid still puts it to sleep.
+
+If macOS says `python3` needs the command line developer tools, click
+**Install**, wait for it to finish, then run the step again.
+
 ## Using it
 
 ```
