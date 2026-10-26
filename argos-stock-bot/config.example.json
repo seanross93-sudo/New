@@ -1,0 +1,9 @@
+{
+  "check_every_minutes": 10,
+  "ntfy_topic": "pick-a-long-random-name-here-7f3k2",
+  "add_to_trolley": true,
+  "products": [
+    { "name": "Product you want", "argos": "https://www.argos.co.uk/product/1234567", "target_price": 249.99 },
+    { "name": "Another product, any price", "argos": "123/4567", "target_price": null }
+  ]
+}

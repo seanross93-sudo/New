@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+argos-stock-bot/config.json
+argos-stock-bot/state.json
+argos-stock-bot/browser-profile/
+__pycache__/
