@@ -76,6 +76,25 @@ refuse hidden browsers. Leave it alone and it closes by itself.
 To turn off the automatic trolley and basket step and get alerts only, set
 `"add_to_trolley": false` in `config.json`.
 
+## iPhone bot (John Lewis, Apple Store UK, Amazon UK)
+
+`iphone_bot.py` is a single file with its settings at the top: your ntfy topic
+and a `PRODUCTS` list of (name, link, most you'll pay or `None`). Links can be
+from johnlewis.com, apple.com/uk or amazon.co.uk.
+
+```
+python3 iphone_bot.py 60   # check every 10 minutes for an hour
+```
+
+When a listing is in stock at or under your price, your iPhone gets an ntfy
+alert and a browser opens with it in that shop's basket or bag. You check out.
+
+- Apple: choose the model, colour and storage on apple.com/uk first, then copy
+  the link, so the page opens with Add to Bag ready.
+- Amazon: set a max price, because other sellers can list iPhones for more.
+- If a shop shows a security check or refuses the page, the bot says so and
+  skips it. Argos, Currys, Smyths and Very do this, so they aren't included.
+
 ## Good to know
 
 - It checks every 10 minutes by default and won't go faster than every
