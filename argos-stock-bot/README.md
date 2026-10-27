@@ -45,7 +45,7 @@ cd ~/Downloads/New-claude-argos-stock-bot/argos-stock-bot
 python3 -m pip install -r requirements.txt
 python3 -m playwright install chromium
 cp config.example.json config.json
-open -e config.json          # edit your products, save, close
+nano config.json             # edit your products; Ctrl+O, Enter to save, Ctrl+X to exit
 python3 bot.py login
 python3 bot.py check
 caffeinate -i python3 bot.py run
