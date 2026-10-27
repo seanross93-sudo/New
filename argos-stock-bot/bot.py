@@ -205,7 +205,22 @@ def check_product(page, store, url):
         page.wait_for_load_state("networkidle", timeout=15000)
     except Exception:
         pass  # shops keep background requests open; the page is usable anyway
-    return parse_product_page(page.content(), STORES[store]["add_button"])
+    result = parse_product_page(page.content(), STORES[store]["add_button"])
+    # The page's product data can say "in stock" when only another colour or size
+    # is, so only trust it when the add button is actually there and clickable.
+    if result["in_stock"] is not False:
+        buttons = page.get_by_role("button", name=re.compile(STORES[store]["add_button"], re.I))
+        clickable = False
+        for i in range(min(buttons.count(), 5)):
+            b = buttons.nth(i)
+            try:
+                if b.is_visible() and b.is_enabled():
+                    clickable = True
+                    break
+            except Exception:
+                continue
+        result["in_stock"] = clickable
+    return result
 
 
 def add_to_basket(playwright, store, url):
