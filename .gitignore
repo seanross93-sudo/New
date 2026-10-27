@@ -26,3 +26,4 @@ argos-stock-bot/config.json
 argos-stock-bot/state.json
 argos-stock-bot/browser-profile/
 __pycache__/
+argos-stock-bot/jl_state.json
