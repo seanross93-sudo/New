@@ -174,9 +174,14 @@ def add_to_basket(pw, url, shop):
     browser.close()
 
 
-def check_all(pw, state):
+def open_window(pw):
     browser = pw.chromium.launch_persistent_context(str(PROFILE_DIR), headless=False, locale="en-GB", viewport={"width": 1280, "height": 900})
-    page = browser.new_page()
+    # Use the window's own tab rather than a second one, so there's only one tab to leave alone.
+    return browser, (browser.pages[0] if browser.pages else browser.new_page())
+
+
+def check_all(pw, state):
+    browser, page = open_window(pw)
     ready_now = []
     for name, url, target in PRODUCTS:
         try:
@@ -187,8 +192,22 @@ def check_all(pw, state):
         try:
             price, in_stock = check(page, url, shop)
         except Exception as e:
-            log(f"{name}: couldn't check ({(str(e).strip().splitlines() or [type(e).__name__])[0][:150]})")
-            continue
+            reason = (str(e).strip().splitlines() or [type(e).__name__])[0][:150]
+            if "has been closed" not in reason:
+                log(f"{name}: couldn't check ({reason})")
+                continue
+            # The window was closed (or the browser crashed) mid-check: reopen it and try once more.
+            log(f"{name}: the browser window closed during the check, trying again. Leave the window alone; it closes by itself.")
+            try:
+                browser.close()
+            except Exception:
+                pass
+            browser, page = open_window(pw)
+            try:
+                price, in_stock = check(page, url, shop)
+            except Exception as e2:
+                log(f"{name}: couldn't check ({(str(e2).strip().splitlines() or [type(e2).__name__])[0][:150]})")
+                continue
         price_text = f"£{price:.2f}" if price is not None else "price unknown"
         log(f"{name}: {price_text}, {'in stock' if in_stock else 'out of stock'}")
         ready = in_stock and (target is None or (price is not None and price <= target))
