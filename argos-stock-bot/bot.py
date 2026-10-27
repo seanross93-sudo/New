@@ -209,18 +209,44 @@ def check_product(page, store, url):
     # The page's product data can say "in stock" when only another colour or size
     # is, so only trust it when the add button is actually there and clickable.
     if result["in_stock"] is not False:
-        buttons = page.get_by_role("button", name=re.compile(STORES[store]["add_button"], re.I))
-        clickable = False
-        for i in range(min(buttons.count(), 5)):
-            b = buttons.nth(i)
-            try:
-                if b.is_visible() and b.is_enabled():
-                    clickable = True
-                    break
-            except Exception:
-                continue
-        result["in_stock"] = clickable
+        result["in_stock"] = find_add_button(page, store) is not None
     return result
+
+
+# Buttons inside these sections belong to other products (recently viewed,
+# "you may also like" and so on), not the one being watched.
+OTHER_PRODUCTS_SECTION = re.compile(
+    r"recommend|recently|carousel|similar|related|also-?(like|bought|viewed)|upsell|cross-?sell|complete-the-look"
+)
+BUY_BOX_MAX_TOP = 1500  # the main product's button sits near the top of the page
+
+
+def find_add_button(page, store):
+    """The main product's add button if it's visible and clickable, else None."""
+    buttons = page.get_by_role("button", name=re.compile(STORES[store]["add_button"], re.I))
+    for i in range(min(buttons.count(), 20)):
+        b = buttons.nth(i)
+        try:
+            if not (b.is_visible() and b.is_enabled()):
+                continue
+            where = b.evaluate(
+                """el => {
+                    const names = [];
+                    for (let n = el; n && n !== document.body; n = n.parentElement) {
+                        names.push(n.id || "", typeof n.className === "string" ? n.className : "",
+                                   n.getAttribute("aria-label") || "", n.getAttribute("data-test") || "",
+                                   n.getAttribute("data-testid") || "");
+                    }
+                    return {names: names.join(" ").toLowerCase(),
+                            top: el.getBoundingClientRect().top + window.scrollY};
+                }"""
+            )
+        except Exception:
+            continue
+        if OTHER_PRODUCTS_SECTION.search(where["names"]) or where["top"] > BUY_BOX_MAX_TOP:
+            continue
+        return b
+    return None
 
 
 def add_to_basket(playwright, store, url):
@@ -229,8 +255,14 @@ def add_to_basket(playwright, store, url):
     browser = open_browser(playwright, headless=False)
     page = browser.pages[0] if browser.pages else browser.new_page()
     page.goto(url, wait_until="domcontentloaded", timeout=45000)
-    button = page.get_by_role("button", name=re.compile(shop["add_button"], re.I)).first
     try:
+        page.wait_for_load_state("networkidle", timeout=15000)
+    except Exception:
+        pass
+    button = find_add_button(page, store)
+    try:
+        if button is None:
+            raise LookupError("no add button for this product")
         button.click(timeout=15000)
         page.wait_for_timeout(3000)
         if shop["basket"]:
