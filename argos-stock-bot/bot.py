@@ -209,7 +209,8 @@ def check_all(playwright, config, state):
         try:
             result = check_product(page, store, url)
         except Exception as e:
-            log(f"{name}: couldn't load the page ({e.__class__.__name__}).")
+            reason = (str(e).strip().splitlines() or [e.__class__.__name__])[0][:200]
+            log(f"{name}: couldn't load the page ({reason}).")
             continue
         price, in_stock = result["price"], result["in_stock"]
         key = f"{store}:{product_id}"
