@@ -194,7 +194,8 @@ def check_all(playwright, config, state):
     if not products:
         log("No products in config.json yet.")
         return
-    browser = open_browser(playwright, headless=True)
+    # Some shops refuse hidden browsers, so by default the check runs in a visible window.
+    browser = open_browser(playwright, headless=not config.get("show_browser", True))
     page = browser.new_page()
     to_buy = []
     for p in products:

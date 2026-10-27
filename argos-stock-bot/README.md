@@ -69,6 +69,9 @@ Your computer has to be on and awake for `run` to keep checking. When a product
 is ready to buy, a browser window opens with it in your trolley or basket. Finish checkout
 there, then close the window and the bot carries on.
 
+Each check opens a browser window for a few seconds, because John Lewis
+refuses hidden browsers. Leave it alone and it closes by itself.
+
 To turn off the automatic trolley and basket step and get alerts only, set
 `"add_to_trolley": false` in `config.json`.
 
