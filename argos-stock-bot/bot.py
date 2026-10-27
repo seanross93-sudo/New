@@ -1,4 +1,4 @@
-"""Argos and John Lewis stock bot.
+"""Stock bot for Argos, John Lewis, Currys, Smyths and Very.
 
 Watches product pages, sends a phone notification when something comes back
 in stock (or drops to your target price), then adds it to your trolley or
@@ -31,6 +31,7 @@ OUT_OF_STOCK_PHRASES = (
     "not available for delivery or collection",
     "notify me when",
     "email me when",
+    "sold out",
 )
 
 STORES = {
@@ -48,7 +49,38 @@ STORES = {
         "add_button": r"add to (basket|bag)",
         "basket_word": "basket",
     },
+    # Basket pages for these shops aren't confirmed, so after adding the item
+    # the bot leaves the product page open (it shows the shop's own basket link).
+    "currys": {
+        "name": "Currys",
+        "home": "https://www.currys.co.uk/",
+        "basket": None,
+        "add_button": r"add to (basket|cart)",
+        "basket_word": "basket",
+    },
+    "smyths": {
+        "name": "Smyths",
+        "home": "https://www.smythstoys.com/uk/en-gb",
+        "basket": None,
+        "add_button": r"add to (basket|cart)",
+        "basket_word": "basket",
+    },
+    "very": {
+        "name": "Very",
+        "home": "https://www.very.co.uk/",
+        "basket": None,
+        "add_button": r"add to (basket|bag)",
+        "basket_word": "basket",
+    },
 }
+
+# (store, pattern) — group 1 is the product path, group 2 the product number.
+PRODUCT_LINKS = (
+    ("johnlewis", r"johnlewis\.com(/[^?#]*?/p(\d+))(?:[/?#]|$)", "https://www.johnlewis.com"),
+    ("currys", r"currys\.co\.uk(/products/[^?#]*?-(\d{6,})\.html)", "https://www.currys.co.uk"),
+    ("smyths", r"smythstoys\.com(/uk/[^?#]*?/p/(\d+))(?:[/?#]|$)", "https://www.smythstoys.com"),
+    ("very", r"very\.co\.uk(/[^?#]*?/(\d+)\.prd)", "https://www.very.co.uk"),
+)
 
 
 def log(msg):
@@ -80,16 +112,19 @@ def identify(value):
     if m:
         cat_no = m.group(1) + m.group(2)
         return "argos", cat_no, f"https://www.argos.co.uk/product/{cat_no}"
-    m = re.search(r"johnlewis\.com(/[^?#]*?/p(\d+))(?:[/?#]|$)", s, re.I)
-    if m:
-        return "johnlewis", m.group(2), "https://www.johnlewis.com" + m.group(1)
-    raise ValueError(f"Not an Argos or John Lewis product link: {value!r}")
+    for store, pattern, origin in PRODUCT_LINKS:
+        m = re.search(pattern, s, re.I)
+        if m:
+            return store, m.group(2), origin + m.group(1)
+    raise ValueError(f"Not a product link from a shop the bot knows: {value!r}")
 
 
 def product_label(store, product_id):
     if store == "argos":
         return f"Argos {product_id[:3]}/{product_id[3:]}"
-    return f"John Lewis p{product_id}"
+    if store == "johnlewis":
+        return f"John Lewis p{product_id}"
+    return f"{STORES[store]['name']} {product_id}"
 
 
 def parse_product_page(html, add_button=r"add to (trolley|basket|bag)"):
@@ -163,7 +198,9 @@ def open_browser(playwright, headless):
 
 
 def check_product(page, store, url):
-    page.goto(url, wait_until="domcontentloaded", timeout=45000)
+    response = page.goto(url, wait_until="domcontentloaded", timeout=45000)
+    if response is not None and response.status >= 400:
+        raise RuntimeError(f"{STORES[store]['name']} refused the page, status {response.status}")
     try:
         page.wait_for_load_state("networkidle", timeout=15000)
     except Exception:
@@ -181,8 +218,11 @@ def add_to_basket(playwright, store, url):
     try:
         button.click(timeout=15000)
         page.wait_for_timeout(3000)
-        page.goto(shop["basket"], wait_until="domcontentloaded")
-        log(f"Added to your {shop['name']} {shop['basket_word']}. Finish checkout in the browser window, then close it.")
+        if shop["basket"]:
+            page.goto(shop["basket"], wait_until="domcontentloaded")
+            log(f"Added to your {shop['name']} {shop['basket_word']}. Finish checkout in the browser window, then close it.")
+        else:
+            log(f"Added to your {shop['name']} {shop['basket_word']}. Open the basket in the browser window to check out, then close it.")
     except Exception:
         log(f"Couldn't find the {shop['name']} add button. The product page is open for you instead.")
     page.wait_for_event("close", timeout=0)  # leave it open until you're done
@@ -249,20 +289,37 @@ def main():
 
     with sync_playwright() as pw:
         if cmd == "login":
+            # Only open the shops on your list, so a shop that blocks the bot isn't visited.
+            used = []
+            for p in config.get("products", []):
+                try:
+                    store = identify(p.get("url") or p.get("argos", ""))[0]
+                except ValueError:
+                    continue
+                if store not in used:
+                    used.append(store)
             browser = open_browser(pw, headless=False)
-            for i, shop in enumerate(STORES.values()):
+            for i, store in enumerate(used):
                 page = browser.pages[0] if i == 0 and browser.pages else browser.new_page()
-                page.goto(shop["home"])
-            log("Sign in to Argos and John Lewis in the browser tabs, then close the window. Your sign-ins are saved for later.")
+                page.goto(STORES[store]["home"])
+            names = ", ".join(STORES[s]["name"] for s in used) or "the shops"
+            log(f"Sign in to {names} in the browser tabs, then close the window. Your sign-ins are saved for later.")
             browser.wait_for_event("close", timeout=0)
         elif cmd == "check":
             check_all(pw, config, state)
         elif cmd == "run":
+            # Optional: python bot.py run 60  -> stop after 60 minutes.
+            stop_at = time.time() + float(sys.argv[2]) * 60 if len(sys.argv) > 2 else None
             minutes = max(MIN_INTERVAL_MINUTES, float(config.get("check_every_minutes", 10)))
-            log(f"Checking every {minutes:g} minutes. Press Ctrl+C to stop.")
+            until = f" until {datetime.fromtimestamp(stop_at):%H:%M}" if stop_at else ""
+            log(f"Checking every {minutes:g} minutes{until}. Press Ctrl+C to stop.")
             while True:
                 check_all(pw, config, state)
-                time.sleep(minutes * 60 * random.uniform(0.85, 1.15))
+                wait = minutes * 60 * random.uniform(0.85, 1.15)
+                if stop_at and time.time() + wait > stop_at:
+                    log("Finished.")
+                    break
+                time.sleep(wait)
         else:
             sys.exit(__doc__)
 

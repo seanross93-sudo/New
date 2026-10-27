@@ -1,6 +1,6 @@
-# Argos and John Lewis stock bot
+# Stock bot
 
-Watches Argos and John Lewis products. When one comes back in stock (or drops to your target
+Watches products at Argos, John Lewis, Currys, Smyths and Very. When one comes back in stock (or drops to your target
 price) it sends a notification to your phone, then adds it to your Argos trolley or
 John Lewis basket in a signed-in browser. You press checkout and approve the payment yourself.
 
@@ -23,7 +23,7 @@ It never stores your card details or passwords. Your shop sign-ins stay in the
    `sean-argos-7f3k2q9`. Anyone who knows the name can see your alerts, so
    don't use something guessable.
 5. **Add your products:** copy `config.example.json` to `config.json` and edit it:
-   - `url`: the Argos or John Lewis product link. For Argos you can also use
+   - `url`: the product link from any of those shops. For Argos you can also use
      the catalogue number, like `123/4567`. John Lewis links end in `/p` and
      a number, like `johnlewis.com/product-name/p1234567`.
    - `target_price`: the most you'll pay, or `null` to alert on any price
@@ -63,14 +63,15 @@ If macOS says `python3` needs the command line developer tools, click
 ```
 python bot.py check   # check everything once, to make sure it works
 python bot.py run     # keep checking every 10 minutes (Ctrl+C to stop)
+python bot.py run 60  # keep checking for 60 minutes, then stop
 ```
 
 Your computer has to be on and awake for `run` to keep checking. When a product
 is ready to buy, a browser window opens with it in your trolley or basket. Finish checkout
 there, then close the window and the bot carries on.
 
-Each check opens a browser window for a few seconds, because John Lewis
-refuses hidden browsers. Leave it alone and it closes by itself.
+Each check opens a browser window for a few seconds, because some shops
+refuse hidden browsers. Leave it alone and it closes by itself.
 
 To turn off the automatic trolley and basket step and get alerts only, set
 `"add_to_trolley": false` in `config.json`.
@@ -82,5 +83,8 @@ To turn off the automatic trolley and basket step and get alerts only, set
   may be against Argos's and John Lewis's terms of use, so keep it gentle.
 - Argos stock shown on a product page can differ by postcode, and it may say "in
   stock" when your local store or delivery area has none.
-- If either shop changes its website, the bot may report "stock unknown". Send the
+- If a shop refuses the bot, the check says "refused the page" for that
+  product. Argos does this. Don't try to get around it; use the shop's own
+  back-in-stock alert instead.
+- If a shop changes its website, the bot may report "stock unknown". Send the
   output to Claude and it can update the code.
