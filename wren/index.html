@@ -1,0 +1,1036 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>body{margin:0}[hidden]{display:none!important}</style></head><body><title>Wren Companion</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: phone-first app. A side drawer (permanent sidebar on wide screens) switches between five areas plus Chat;
+   each area has pill sub-tabs and white cards. Sheets slide up for logging; full-screen overlays run sessions. */
+:root {
+  --bg: #ffffff;
+  --bg2: #f7f8fa;
+  --ink: #16181d;
+  --muted: #858a94;
+  --line: #e9ebef;
+  --accent: #2d6cf0;
+  --accent-soft: #eef3fe;
+  --band: #e8effd;
+  --on-accent: #ffffff;
+  --bad: #e0483e;
+  --bad-soft: #fdecea;
+  --good: #1f9d63;
+  --good-soft: #e5f6ee;
+  --violet: #7a4ff0;
+  --violet-soft: #efe9fe;
+  --chip: #f2f3f5;
+  --shadow: 0 1px 2px rgba(20, 24, 33, .04), 0 6px 20px rgba(20, 24, 33, .05);
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --drawer: min(78vw, 320px);
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1013; --bg2: #15181d; --ink: #eef0f3; --muted: #8d94a0; --line: #252a31; --accent: #6b9bff; --accent-soft: #18233a;
+  --band: #16213a; --on-accent: #0b1020; --bad: #ff7a70; --bad-soft: #3a1c1a; --good: #4fd193; --good-soft: #16301f;
+  --violet: #a98bff; --violet-soft: #251d3d; --chip: #1d2127; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.25); color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0e1013; --bg2: #15181d; --ink: #eef0f3; --muted: #8d94a0; --line: #252a31; --accent: #6b9bff; --accent-soft: #18233a;
+  --band: #16213a; --on-accent: #0b1020; --bad: #ff7a70; --bad-soft: #3a1c1a; --good: #4fd193; --good-soft: #16301f;
+  --violet: #a98bff; --violet-soft: #251d3d; --chip: #1d2127; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.25); color-scheme: dark; }
+
+html, body { height: 100%; }
+body { background: var(--bg2); color: var(--ink); font-family: var(--font); font-size: 16px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+* { box-sizing: border-box; }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; background: none; border: 0; padding: 0; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+/* ---------- drawer ---------- */
+.drawer { position: fixed; top: 0; bottom: 0; left: 0; width: var(--drawer); background: var(--bg2); display: flex; flex-direction: column;
+  padding: calc(28px + env(safe-area-inset-top, 0px)) 16px calc(20px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); gap: 6px; }
+.logo { display: flex; align-items: center; gap: 12px; padding: 6px 8px 22px; font-size: 26px; font-weight: 500; letter-spacing: -0.01em; }
+.mark { width: 38px; height: 38px; flex: none; }
+.senses { display: flex; align-items: center; gap: 12px; padding: 8px; color: var(--muted); font-size: 16px; text-align: left; border-radius: 14px; }
+.senses:hover { background: var(--chip); }
+.nav { margin-top: auto; display: flex; flex-direction: column; gap: 4px; }
+.nav button { display: flex; align-items: center; gap: 16px; padding: 14px 14px; border-radius: 18px; color: var(--muted); font-size: 18px; text-align: left; }
+.nav button svg { color: var(--muted); }
+.nav button[aria-current="page"] { background: var(--chip); color: var(--accent); }
+.nav button[aria-current="page"] svg { color: var(--accent); }
+.nav .gap { height: 18px; }
+.me { display: flex; align-items: center; gap: 12px; padding: 18px 10px 4px; font-size: 18px; font-weight: 500; text-align: left; }
+.me .mark { width: 34px; height: 34px; }
+.badge { background: var(--ink); color: var(--bg); font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; }
+
+/* ---------- main panel ---------- */
+.shell { position: relative; z-index: 2; background: var(--bg); min-height: 100%; transition: transform .32s cubic-bezier(.3,.7,.2,1), border-radius .32s; }
+body.open .shell { transform: translateX(var(--drawer)); border-radius: 36px 0 0 36px; box-shadow: -10px 0 40px rgba(10, 15, 25, .12); height: 100%; overflow: hidden; }
+.shield { position: fixed; inset: 0; z-index: 3; display: none; }
+body.open .shield { display: block; left: var(--drawer); }
+.wrap { max-width: 560px; margin: 0 auto; padding-left: max(18px, env(safe-area-inset-left, 0px)); padding-right: max(18px, env(safe-area-inset-right, 0px)); padding-block: calc(14px + env(safe-area-inset-top, 0px)) 120px; }
+header.bar { display: grid; grid-template-columns: 56px 1fr 56px; align-items: center; gap: 8px; height: 64px; }
+header.bar h1 { margin: 0; text-align: center; font-size: 18px; font-weight: 600; }
+.round { width: 52px; height: 52px; border-radius: 50%; border: 1px solid var(--line); background: var(--bg); box-shadow: var(--shadow); display: grid; place-items: center; }
+.tabs { display: flex; gap: 6px; margin: 18px -4px 22px; overflow-x: auto; scrollbar-width: none; padding: 2px 4px; }
+.tabs::-webkit-scrollbar { display: none; }
+.tabs button { flex: none; padding: 11px 20px; border-radius: 999px; font-size: 17px; font-weight: 500; white-space: nowrap; }
+.tabs button[aria-selected="true"] { background: var(--accent-soft); color: var(--accent); }
+.sampleNote { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; color: var(--muted); background: var(--chip); border-radius: 14px; padding: 8px 12px; margin-top: 8px; }
+.sampleNote button { color: var(--accent); font-weight: 600; }
+
+/* ---------- cards & type ---------- */
+.stack { display: flex; flex-direction: column; gap: 16px; }
+.card { background: var(--bg); border: 1px solid var(--line); border-radius: 28px; padding: 22px 20px; box-shadow: var(--shadow); min-width: 0; }
+.cap { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+.secLabel { margin: 10px 4px -4px; }
+.metric { display: flex; flex-direction: column; gap: 4px; }
+.metric + .metric { margin-top: 22px; }
+.big { font-family: var(--display); font-size: 30px; font-weight: 600; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.big small { font-size: 16px; font-weight: 400; color: var(--muted); letter-spacing: 0; margin-left: 10px; }
+.sub { color: var(--muted); font-size: 15px; }
+.ask { display: inline-flex; align-items: center; gap: 8px; color: var(--accent); font-size: 16px; margin-top: 6px; text-align: left; }
+.ask svg { width: 20px; height: 20px; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.headline { font-family: var(--display); font-size: 27px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; margin: 0; text-wrap: balance; }
+h3 { margin: 0; font-size: 18px; font-weight: 600; }
+p { margin: 0; }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 50px; padding: 0 26px; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-weight: 600; font-size: 16px; }
+.btn.block { width: 100%; }
+.btn.soft { background: var(--accent-soft); color: var(--accent); }
+.btn.grey { background: var(--chip); color: var(--ink); }
+.btn.text { background: none; color: var(--ink); padding: 0 16px; }
+.btn.sm { height: 40px; padding: 0 18px; font-size: 15px; }
+.btn:disabled { opacity: .45; cursor: default; }
+.row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.between { justify-content: space-between; }
+
+/* noticed card */
+.noticed { padding: 0; overflow: hidden; }
+.noticed .band { background: var(--band); padding: 22px 30px 30px; }
+.note { position: relative; background: var(--bg); border-radius: 22px; padding: 14px 16px; display: flex; gap: 12px; box-shadow: 0 8px 22px rgba(30, 60, 140, .1); }
+.note::after { content: ""; position: absolute; left: 14px; right: 14px; bottom: -9px; height: 20px; background: var(--bg); opacity: .6; border-radius: 0 0 20px 20px; z-index: -1; }
+.note .mark { width: 30px; height: 30px; }
+.note b { font-weight: 600; }
+.note time { margin-left: auto; color: var(--muted); font-size: 13px; white-space: nowrap; padding-left: 8px; }
+.note p { font-size: 15px; }
+.noticed .body { padding: 26px 22px 24px; display: flex; flex-direction: column; gap: 18px; }
+.feat { display: flex; align-items: center; gap: 14px; font-size: 16px; }
+.feat span.ic { width: 40px; height: 40px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; flex: none; }
+.feat svg { width: 20px; height: 20px; }
+
+/* stats */
+.seg { display: flex; gap: 4px; align-items: center; }
+.seg button { flex: 1; height: 42px; border-radius: 999px; font-weight: 600; font-size: 15px; }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+.seg.white { background: transparent; }
+.seg.white button[aria-pressed="true"] { background: var(--bg); color: var(--ink); box-shadow: var(--shadow); }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tile { text-align: left; border: 1.5px solid transparent; border-radius: 26px; padding: 16px 18px; display: flex; flex-direction: column; gap: 2px; }
+.tile[aria-pressed="true"] { border-color: var(--accent); }
+.tile .v { font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 4px; }
+.pill { display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 999px; font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.pill.good { background: var(--good-soft); color: var(--good); }
+.pill.flat { background: var(--chip); color: var(--muted); }
+.chart svg { width: 100%; height: auto; display: block; margin-top: 14px; }
+.facts { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 12px; margin-top: 18px; }
+.facts b { display: block; font-size: 19px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.facts span { color: var(--muted); font-size: 15px; }
+.weekbars { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin: 22px 0 10px; }
+.weekbars i { height: 14px; border-radius: 999px; background: var(--chip); }
+.weekbars i.on { background: var(--accent); }
+
+/* patterns */
+.pat { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.pat p { font-size: 17px; }
+.evid { color: var(--muted); font-size: 15px; font-weight: 500; }
+.empty { text-align: center; padding: 70px 16px 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.empty .ic { width: 72px; height: 72px; border-radius: 50%; background: var(--chip); color: var(--muted); display: grid; place-items: center; margin-bottom: 16px; }
+.empty h3 { font-size: 17px; }
+.empty p { color: var(--muted); max-width: 34ch; }
+.link { color: var(--accent); }
+
+/* practice cards */
+.practice { background: var(--accent-soft); border: 0; box-shadow: none; display: flex; flex-direction: column; gap: 12px; padding: 26px 22px 22px; }
+.practice svg.shape { width: 100%; height: 80px; display: block; stroke: var(--accent); stroke-width: 3; fill: none; }
+.practice .headline { font-size: 28px; }
+.practice .why { color: var(--muted); font-size: 17px; }
+.practice .seg { margin: 8px 0 4px; }
+
+/* lists */
+.list { display: flex; flex-direction: column; }
+.list .li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 0; }
+.list .li + .li { border-top: 1px solid var(--line); }
+.list .li span.v { color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+select.bare { border: 0; background: transparent; color: var(--muted); text-align: right; font-size: 16px; padding: 4px 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px; background: var(--chip); font-size: 15px; }
+.chip[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+.rules { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.rule { min-height: 160px; display: flex; flex-direction: column; gap: 6px; text-align: left; justify-content: space-between; }
+.rule.new { align-items: center; justify-content: center; color: var(--accent); font-weight: 500; }
+.switch { width: 46px; height: 28px; border-radius: 999px; background: var(--line); position: relative; flex: none; transition: background .2s; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.2); transition: transform .2s; }
+.switch[aria-checked="true"] { background: var(--good); }
+.switch[aria-checked="true"]::after { transform: translateX(18px); }
+
+/* commitments */
+.ctop { display: flex; align-items: center; gap: 16px; }
+.ctop .ic { width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; flex: none; }
+.ctop h3 { flex: 1; font-weight: 500; }
+.ctop .info { color: var(--accent); }
+.carousel { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 16px -20px 0 0; padding: 2px 20px 6px 0; scrollbar-width: none; }
+.carousel::-webkit-scrollbar { display: none; }
+.tpl { flex: 0 0 82%; scroll-snap-align: start; background: var(--bg2); border-radius: 24px; padding: 20px 20px; display: flex; flex-direction: column; gap: 6px; }
+.tpl .cat { font-size: 17px; }
+.tpl h4 { margin: 4px 0 0; font-size: 17px; font-weight: 500; }
+.tpl .d { color: var(--muted); font-size: 15px; }
+.tpl .step { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; color: var(--muted); margin: 8px 0 14px; }
+.tpl .step svg { width: 20px; height: 20px; }
+.tpl .btn { align-self: flex-start; margin-top: auto; }
+.active-c { display: flex; align-items: center; gap: 14px; }
+.check { width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; flex: none; color: transparent; }
+.check[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.check svg { width: 20px; height: 20px; stroke-width: 2.4; }
+
+/* journal */
+.entry { display: flex; flex-direction: column; gap: 4px; }
+.entry + .entry { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 14px; }
+.entry time { color: var(--muted); font-size: 13px; }
+.entry p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.fab { position: fixed; z-index: 4; right: max(18px, env(safe-area-inset-right, 0px)); bottom: calc(24px + env(safe-area-inset-bottom, 0px)); height: 58px; padding: 0 28px; box-shadow: 0 10px 26px rgba(45, 108, 240, .35); font-size: 17px; }
+.days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; text-align: center; margin-top: 18px; }
+.days span { color: var(--muted); font-size: 14px; }
+.days i { font-style: normal; width: min(44px, 100%); aspect-ratio: 1; margin: 8px auto 0; border-radius: 50%; display: grid; place-items: center; font-size: 15px; color: var(--muted); background: var(--chip); font-variant-numeric: tabular-nums; }
+.days i.on { background: var(--accent); color: var(--on-accent); }
+.days i.today { background: transparent; border: 2px solid var(--muted); }
+.days i.today.on { background: var(--accent); border-color: var(--accent); }
+.days i.future { background: transparent; opacity: .6; }
+
+/* chat */
+.chat { display: flex; flex-direction: column; gap: 12px; }
+.msg { max-width: 86%; padding: 11px 15px; border-radius: 22px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 16px; }
+.msg.me { align-self: flex-end; background: var(--accent); color: var(--on-accent); border-bottom-right-radius: 8px; }
+.msg.w { align-self: flex-start; background: var(--chip); border-bottom-left-radius: 8px; }
+.composer { position: fixed; z-index: 4; left: 0; right: 0; bottom: 0; padding-bottom: env(safe-area-inset-bottom, 0px); background: linear-gradient(transparent, var(--bg) 26%); }
+body.wide .composer { left: var(--drawer); }
+.composer .in { max-width: 560px; margin: 0 auto; display: flex; gap: 8px; padding: 18px max(18px, env(safe-area-inset-right, 0px)) 14px max(18px, env(safe-area-inset-left, 0px)); }
+.composer textarea { flex: 1; min-width: 0; resize: none; height: 50px; border-radius: 26px; border: 1px solid var(--line); background: var(--bg); padding: 13px 18px; box-shadow: var(--shadow); }
+.composer .btn { width: 50px; padding: 0; }
+
+/* sheets & overlays */
+.scrim { position: fixed; inset: 0; z-index: 20; background: rgba(10, 14, 22, .4); display: flex; align-items: flex-end; justify-content: center; }
+.sheet { width: 100%; max-width: 560px; max-height: 92%; overflow: auto; background: var(--bg); border-radius: 30px 30px 0 0; display: flex; flex-direction: column; gap: 16px;
+  padding: 22px max(20px, env(safe-area-inset-right, 0px)) calc(26px + env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px)); animation: rise .28s ease-out; }
+@keyframes rise { from { transform: translateY(50px); opacity: .5; } }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label, .field .lab { font-size: 14px; color: var(--muted); }
+.field input, .field textarea, .field select { width: 100%; border: 1px solid var(--line); background: var(--bg2); border-radius: 14px; padding: 12px 14px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.close { width: 40px; height: 40px; border-radius: 50%; background: var(--chip); display: grid; place-items: center; }
+.overlay { position: fixed; inset: 0; z-index: 30; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: space-between; text-align: center;
+  padding: calc(24px + env(safe-area-inset-top, 0px)) max(20px, env(safe-area-inset-right, 0px)) calc(30px + env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px)); }
+.orbit { width: min(70vw, 300px); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, var(--bg) 0 30%, var(--accent-soft) 31% 100%); border: 2px solid var(--accent);
+  display: grid; place-items: center; transform: scale(.55); transition-property: transform; transition-timing-function: ease-in-out; }
+.phase { font-size: 26px; font-weight: 600; }
+.caption { font-size: 22px; line-height: 1.4; max-width: 26ch; min-height: 4em; }
+.toast { position: fixed; z-index: 40; left: 50%; transform: translateX(-50%); bottom: calc(96px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 999px; font-size: 14px; }
+
+/* wide screens: drawer becomes a sidebar */
+@media (min-width: 900px) {
+  .shell { margin-left: var(--drawer); border-radius: 36px 0 0 36px; box-shadow: -10px 0 40px rgba(10, 15, 25, .06); }
+  body.open .shell { transform: none; height: auto; overflow: visible; }
+  body.open .shield { display: none; }
+  .menuBtn { visibility: hidden; }
+  .fab { right: max(40px, calc((100vw - var(--drawer) - 560px) / 2)); }
+}
+@media (max-width: 899px) { .drawer { visibility: hidden; } body.open .drawer { visibility: visible; } }
+@media (prefers-reduced-motion: reduce) { .shell, .sheet, .orbit { transition: none !important; animation: none !important; } }
+</style>
+
+<aside class="drawer" id="drawer" aria-label="Menu"></aside>
+<div class="shield" id="shield"></div>
+<div class="shell" id="shell"><div class="wrap" id="main"></div></div>
+<div id="layer"></div>
+
+<script>
+(() => {
+  // ---------------- icons ----------------
+  const P = {
+    body: '<circle cx="12" cy="4" r="1.6"/><path d="M5 8.5c2.5 1 4.5 1.4 7 1.4s4.5-.4 7-1.4M12 10v5M9 21l1-6h4l1 6M9.5 15h5"/>',
+    mind: '<circle cx="12" cy="12" r="9"/><path d="M3.5 11c2.5-2 5.5-2 8.5 0s6 2 8.5 0"/>',
+    attn: '<path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16"/><circle cx="12" cy="12" r=".8" fill="currentColor"/>',
+    commit: '<circle cx="12" cy="12" r="2.2"/><path d="M12 3.5a3.5 3.5 0 0 1 3.4 4.2 3.5 3.5 0 0 1 4.6 4.3 3.5 3.5 0 0 1-2.6 5.6A3.5 3.5 0 0 1 12 20.5a3.5 3.5 0 0 1-5.4-2.9A3.5 3.5 0 0 1 4 12a3.5 3.5 0 0 1 4.6-4.3A3.5 3.5 0 0 1 12 3.5z"/>',
+    reflect: '<rect x="5" y="3.5" width="14" height="17" rx="2"/><path d="M9 3.5v5l1.5-1 1.5 1v-5M8 12h0M8 15h0"/>',
+    chat: '<path d="M12 4c4.7 0 8 3 8 7s-3.3 7-8 7c-1 0-2-.1-2.9-.4L5 19.5l1-3.4C4.8 14.8 4 13 4 11c0-4 3.3-7 8-7z"/>',
+    menu: '<path d="M5 9h14M5 15h14"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h0"/>',
+    lock: '<rect x="5.5" y="10.5" width="13" height="9" rx="2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/>',
+    moon: '<path d="M19 14.5A7.5 7.5 0 0 1 9.5 5a7.5 7.5 0 1 0 9.5 9.5z"/>',
+    pencil: '<path d="M4 20l1-4L16 5l3 3L8 19z"/>',
+    heart: '<path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.4 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/>',
+    wave: '<path d="M4 9v6M8 6v12M12 9v6M16 6v12M20 10v4"/>',
+    arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    pattern: '<circle cx="7" cy="6" r="1.8"/><circle cx="17" cy="6" r="1.8"/><circle cx="7" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/><path d="M8.8 6h6.4M17 7.8v8.4"/>',
+    goal: '<path d="M12 4a8 8 0 1 0 8 8"/><path d="M12 8a4 4 0 1 0 4 4"/><path d="M12 12l5-8M17 4v3h3"/>',
+    sprout: '<path d="M12 20v-8M12 12c0-4-3-6-7-6 0 4 3 6 7 6zM12 12c0-4 3-6 7-6 0 4-3 6-7 6z"/>',
+    check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    x: '<path d="M6 6l12 12M18 6L6 18"/>',
+    send: '<path d="M12 19V5M6 11l6-6 6 6"/>',
+    senses: '<circle cx="9" cy="12" r="5.5"/><circle cx="15" cy="12" r="5.5"/>',
+    sliders: '<path d="M4 8h9M17 8h3M4 16h3M11 16h9"/><circle cx="15" cy="8" r="2"/><circle cx="9" cy="16" r="2"/>',
+    trash: '<path d="M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13"/>'
+  };
+  const ic = (n, cls = "i") => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${P[n]}</svg>`;
+  // Wren's mark: three nested arcs, a wing in flight
+  const mark = (cls = "mark") => `<svg class="${cls}" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="var(--accent-soft)"/><path d="M9 24c4-8 9-11 15-11M12 28c4-6 8-8 14-8M16 31c3-3 6-4 10-4" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round"/><circle cx="27.5" cy="13" r="2" fill="var(--accent)"/></svg>`;
+
+  // ---------------- utils ----------------
+  const $ = (s, el = document) => el.querySelector(s);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const dk = d => { const x = new Date(d); return new Date(x.getTime() - x.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
+  const addDays = (k, n) => { const d = new Date(k + "T12:00"); d.setDate(d.getDate() + n); return dk(d); };
+  const TODAY = dk(new Date());
+  const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const hm = m => `${Math.floor(m / 60)}h ${Math.round(m % 60)}m`;
+  const num = n => Math.round(n).toLocaleString("en-GB");
+  const fmtDay = (k, o = { day: "numeric", month: "short" }) => new Date(k + "T12:00").toLocaleDateString("en-GB", o);
+  const wd = k => "SMTWTFS"[new Date(k + "T12:00").getDay()];
+  const nowTime = () => new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  function toast(t) { const el = document.createElement("div"); el.className = "toast"; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 2300); }
+
+  // ---------------- sample data (clearly marked, removable) ----------------
+  function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function sampleState() {
+    const r = rng(7), body = [];
+    let prevWorkout = false;
+    for (let i = 41; i >= 0; i--) {
+      const date = addDays(TODAY, -i);
+      const workout = i > 0 && r() < 0.26;
+      const sleepMin = Math.round(330 + r() * 105);
+      const hrv = Math.round(46 + r() * 9 - (prevWorkout ? 7 : 0));
+      const rhr = Math.round(59 + r() * 5 + (sleepMin < 370 ? 2 : 0));
+      body.push({ date, sleepMin, steps: Math.round(4200 + r() * 7000), rhr, hrv, workoutMin: workout ? Math.round(30 + r() * 25) : 0, workoutType: workout ? "Cardio" : "" });
+      prevWorkout = workout;
+    }
+    const t = body[body.length - 1]; t.sleepMin = 387; t.steps = 7589; t.rhr = 61; t.hrv = 46;
+    const attention = [];
+    for (let i = 6; i >= 0; i--) attention.push({ date: addDays(TODAY, -i), screenMin: Math.round(150 + r() * 120), pickups: Math.round(40 + r() * 45) });
+    return {
+      v: 2, sample: true, name: "",
+      body, attention,
+      sessions: [{ date: addDays(TODAY, -5), kind: "Box breathing", min: 2 }, { date: addDays(TODAY, -2), kind: "Guided relaxation", min: 5 }],
+      rules: [{ id: "r1", name: "Morning focus", from: "09:00", to: "11:00", days: [1, 2, 3, 4, 5], on: true }],
+      blocked: ["Instagram", "TikTok", "News"], unblockMin: 30, unblockUses: 1, night: { on: true, from: "22:15", to: "07:00" },
+      commitments: [{ id: "c1", kind: "habit", cat: "Rest", title: "Read before bed", when: "After I get into bed", bad: "One page still counts", days: [0,1,2,3,4,5,6], log: [addDays(TODAY, -3), addDays(TODAY, -2), addDays(TODAY, -1)] }],
+      journal: [
+        { id: "j1", at: addDays(TODAY, -3) + "T08:10", text: "Rushed morning. Inbox before coffee again, felt behind all day." },
+        { id: "j2", at: addDays(TODAY, -2) + "T21:40", text: "Long walk after work with Priya. Calm evening, slept early." },
+        { id: "j3", at: addDays(TODAY, -1) + "T21:05", text: "Good call with Tom. Glad I said no to the extra project." }
+      ],
+      summaries: {}, seen: {}, dismissed: [], chat: []
+    };
+  }
+  const emptyState = () => ({ v: 2, sample: false, name: "", body: [], attention: [], sessions: [], rules: [], blocked: [], unblockMin: 30, unblockUses: 1,
+    night: { on: false, from: "22:30", to: "07:00" }, commitments: [], journal: [], summaries: {}, seen: {}, dismissed: [], chat: [] });
+
+  // ---------------- storage: private per-person store, falling back to this browser ----------------
+  const LS = "wren-v2";
+  let state = (() => { try { const s = JSON.parse(localStorage.getItem(LS)); if (s && s.v === 2) return Object.assign(emptyState(), s); } catch {} return sampleState(); })();
+  let docRef = null, saveT = null;
+  function save() {
+    clearTimeout(saveT);
+    saveT = setTimeout(async () => {
+      const snap = JSON.parse(JSON.stringify(state)); snap.chat = snap.chat.slice(-40);
+      try { localStorage.setItem(LS, JSON.stringify(snap)); } catch {}
+      if (docRef) { try { await docRef.set(snap); } catch {} }
+    }, 400);
+  }
+  (async () => {
+    if (!window.claude?.use) return;
+    try {
+      const [db, user] = await Promise.all([claude.use("db"), claude.use("user")]);
+      if (!db || !user) return;
+      const id = await user.id(); if (!id) return;
+      docRef = db.doc("data/users/" + id + "/wren-v2");
+      const snap = await docRef.get();
+      if (snap.exists && snap.data()?.v === 2) { state = Object.assign(emptyState(), snap.data()); render(); }
+      else if (!state.sample) save();
+    } catch {}
+  })();
+  function goReal() { if (state.sample) { const keep = { name: state.name, chat: [] }; state = Object.assign(emptyState(), keep); } }
+
+  // ---------------- derived data ----------------
+  const bodySorted = () => [...state.body].sort((a, b) => a.date < b.date ? -1 : 1);
+  const bodyOn = k => state.body.find(b => b.date === k);
+  const sleepScore = b => b.sleepScore || clamp(Math.round(100 - Math.abs(470 - b.sleepMin) / 2.2), 20, 99);
+  function recovery(b, base) { return clamp(Math.round(62 + (b.hrv - base.hrv) * 2.4 + (b.sleepMin - 420) / 5 - (b.rhr - base.rhr) * 2), 5, 99); }
+  const baseline = () => { const d = bodySorted().slice(-30); return { hrv: avg(d.map(x => x.hrv)), rhr: avg(d.map(x => x.rhr)) }; };
+  const within = (arr, days) => arr.filter(x => (x.date || x.at.slice(0, 10)) > addDays(TODAY, -days));
+
+  function evidence(n, N) { return n >= 8 && N >= 28 ? "Strong evidence" : n >= 4 ? "Some evidence" : "Early signal"; }
+  function bodyPatterns() {
+    const d = bodySorted(); if (d.length < 14) return [];
+    const base = baseline(), out = [];
+    const pairs = []; for (let i = 1; i < d.length; i++) if (addDays(d[i - 1].date, 1) === d[i].date) pairs.push([d[i - 1], d[i]]);
+    const N = pairs.length;
+    const A = pairs.filter(p => p[0].workoutMin > 0), B = pairs.filter(p => !p[0].workoutMin);
+    if (A.length >= 3 && B.length >= 3) {
+      const ra = Math.round(avg(A.map(p => recovery(p[1], base)))), rb = Math.round(avg(B.map(p => recovery(p[1], base))));
+      const hd = Math.round(avg(A.map(p => p[1].hrv)) - avg(B.map(p => p[1].hrv)));
+      if (Math.abs(ra - rb) >= 4) out.push({ id: "workout-recovery", text: `After a training day your recovery score is ${ra < rb ? "lower" : "higher"}: ${ra} vs ${rb} on other days (${A.length}/${N} days).`, pill: `HRV ${hd > 0 ? "+" : "−"}${Math.abs(hd)} ms`, tone: hd < 0 ? "bad" : "good", ev: evidence(A.length, N) });
+    }
+    const S = pairs.filter(p => p[0].steps >= 8000), F = pairs.filter(p => p[0].steps < 8000);
+    if (S.length >= 3 && F.length >= 3) {
+      const diff = Math.round(avg(S.map(p => p[1].sleepMin)) - avg(F.map(p => p[1].sleepMin)));
+      if (Math.abs(diff) >= 8) out.push({ id: "steps-sleep", text: `After days over 8,000 steps you sleep ${Math.abs(diff)} minutes ${diff > 0 ? "longer" : "less"} (${S.length}/${N} days).`, pill: `Sleep ${diff > 0 ? "+" : "−"}${Math.abs(diff)} min`, tone: diff > 0 ? "good" : "bad", ev: evidence(S.length, N) });
+    }
+    const L = d.filter(x => x.sleepMin < 390), H = d.filter(x => x.sleepMin >= 390);
+    if (L.length >= 3 && H.length >= 3) {
+      const diff = Math.round(avg(L.map(x => x.rhr)) - avg(H.map(x => x.rhr)));
+      if (Math.abs(diff) >= 1) out.push({ id: "sleep-rhr", text: `On mornings after less than 6½ hours of sleep, your resting heart rate runs ${Math.abs(diff)} bpm ${diff > 0 ? "higher" : "lower"} (${L.length}/${d.length} days).`, pill: `Resting HR ${diff > 0 ? "+" : "−"}${Math.abs(diff)} bpm`, tone: diff > 0 ? "bad" : "good", ev: evidence(L.length, d.length) });
+    }
+    return out.filter(p => !state.dismissed.includes(p.id));
+  }
+  function mindPatterns() {
+    if (state.sessions.length < 3) return [];
+    const days = new Set(state.sessions.map(s => s.date));
+    const nights = bodySorted().filter(b => b.date !== TODAY);
+    const A = nights.filter(b => days.has(addDays(b.date, -1))), B = nights.filter(b => !days.has(addDays(b.date, -1)));
+    if (A.length < 3 || B.length < 3) return [];
+    const diff = Math.round(avg(A.map(b => b.sleepMin)) - avg(B.map(b => b.sleepMin)));
+    return [{ id: "practice-sleep", text: `On nights after a practice you sleep ${Math.abs(diff)} minutes ${diff >= 0 ? "longer" : "less"} than other nights (${A.length} nights).`, pill: `Sleep ${diff >= 0 ? "+" : "−"}${Math.abs(diff)} min`, tone: diff >= 0 ? "good" : "bad", ev: evidence(A.length, nights.length) }].filter(p => !state.dismissed.includes(p.id));
+  }
+  function attnPatterns() {
+    const a = state.attention.filter(x => bodyOn(addDays(x.date, 1)));
+    if (a.length < 5) return [];
+    const med = [...a].sort((x, y) => x.screenMin - y.screenMin)[Math.floor(a.length / 2)].screenMin;
+    const hi = a.filter(x => x.screenMin > med), lo = a.filter(x => x.screenMin <= med);
+    const diff = Math.round(avg(hi.map(x => bodyOn(addDays(x.date, 1)).sleepMin)) - avg(lo.map(x => bodyOn(addDays(x.date, 1)).sleepMin)));
+    if (Math.abs(diff) < 5) return [];
+    return [{ id: "screen-sleep", text: `On days with more than ${hm(med)} of screen time, you sleep ${Math.abs(diff)} minutes ${diff < 0 ? "less" : "more"} that night (${hi.length}/${a.length} days).`, pill: `Sleep ${diff >= 0 ? "+" : "−"}${Math.abs(diff)} min`, tone: diff < 0 ? "bad" : "good", ev: evidence(hi.length, a.length) }].filter(p => !state.dismissed.includes(p.id));
+  }
+  function commitPatterns() {
+    const logs = state.commitments.flatMap(c => c.log || []);
+    if (logs.length < 7) return [];
+    const by = [0, 0, 0, 0, 0, 0, 0]; logs.forEach(k => by[new Date(k + "T12:00").getDay()]++);
+    const names = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"];
+    const best = by.indexOf(Math.max(...by)), worst = by.indexOf(Math.min(...by));
+    return [{ id: "commit-days", text: `You keep your commitments most on ${names[best]} and least on ${names[worst]}.`, pill: `${logs.length} check-ins`, tone: "good", ev: evidence(logs.length, 28) }].filter(p => !state.dismissed.includes(p.id));
+  }
+  const POS = /\b(calm|good|glad|great|happy|relaxed|rested|grateful|proud|easy|enjoy|enjoyed|nice|fun|love|walk|slept|peaceful)\b/gi;
+  const NEG = /\b(rushed|behind|tired|stress|stressed|anxious|angry|bad|late|overwhelmed|worried|exhausted|sad|annoyed|busy)\b/gi;
+  const tone = t => (t.match(POS) || []).length - (t.match(NEG) || []).length;
+  function reflectPatterns() {
+    const j = state.journal; if (j.length < 3) return [];
+    const m = j.filter(e => +e.at.slice(11, 13) < 12), ev = j.filter(e => +e.at.slice(11, 13) >= 17);
+    if (!m.length || !ev.length) return [];
+    const d = avg(ev.map(e => tone(e.text))) - avg(m.map(e => tone(e.text)));
+    if (Math.abs(d) < 0.5) return [];
+    return [{ id: "reflect-time", text: `Your evening entries read ${d > 0 ? "calmer" : "more tense"} than your morning ones (${ev.length} evening, ${m.length} morning).`, pill: d > 0 ? "Evenings calmer" : "Mornings calmer", tone: "good", ev: evidence(j.length, 28) }].filter(p => !state.dismissed.includes(p.id));
+  }
+
+  // ---------------- navigation ----------------
+  const SECTIONS = [
+    { id: "body", name: "Body", icon: "body", tabs: [["today", "Today"], ["stats", "Statistics"], ["patterns", "Patterns"]] },
+    { id: "mind", name: "Mindfulness", icon: "mind", tabs: [["breath", "Breathwork"], ["med", "Meditation"], ["patterns", "Patterns"]] },
+    { id: "attn", name: "Attention", icon: "attn", tabs: [["today", "Today"], ["rules", "Rules"], ["analytics", "Analytics"], ["patterns", "Patterns"]] },
+    { id: "commit", name: "Commitments", icon: "commit", tabs: [["list", "Commitments"], ["patterns", "Patterns"]] },
+    { id: "reflect", name: "Reflection", icon: "reflect", tabs: [["journal", "Journal"], ["insights", "Insights"], ["patterns", "Patterns"]] },
+    { id: "chat", name: "Chat", icon: "chat", tabs: [] }
+  ];
+  const ui = { sec: "body", sub: { body: "today", mind: "breath", attn: "today", commit: "list", reflect: "journal" }, range: 7, metric: "sleep", aRange: "week", dur: { box: 2, "478": 5, coherent: 5, sigh: 2, relax: 5, scan: 10 }, info: {} };
+  const routeFromHash = () => { const h = location.hash.slice(1).split("-"); if (SECTIONS.some(s => s.id === h[0])) { ui.sec = h[0]; if (h[1] && ui.sub[h[0]] !== undefined) ui.sub[h[0]] = h[1]; } };
+  routeFromHash();
+  window.addEventListener("hashchange", () => { routeFromHash(); render(); });
+  const go = (sec, sub) => { ui.sec = sec; if (sub) ui.sub[sec] = sub; document.body.classList.remove("open"); try { history.replaceState(null, "", "#" + sec + (ui.sub[sec] ? "-" + ui.sub[sec] : "")); } catch {} render(); window.scrollTo(0, 0); };
+
+  function senses() {
+    return [
+      { name: "Health", desc: "Sleep, steps, heart and workouts", on: state.body.some(b => b.date > addDays(TODAY, -4)), act: "logBody" },
+      { name: "Screen time", desc: "Daily screen time and pickups", on: state.attention.some(a => a.date > addDays(TODAY, -4)), act: "logScreen" },
+      { name: "Journal", desc: "Two lines a day in Reflection", on: state.journal.some(j => j.at.slice(0, 10) > addDays(TODAY, -8)), act: "write" }
+    ];
+  }
+
+  // ---------------- render ----------------
+  function render() {
+    document.body.classList.toggle("wide", matchMedia("(min-width: 900px)").matches);
+    const n = senses().filter(s => s.on).length;
+    $("#drawer").innerHTML = `
+      <div class="logo">${mark()}Wren</div>
+      <button class="senses" type="button" data-act="senses">${ic("senses")} ${n} of 3 senses connected</button>
+      <nav class="nav">${SECTIONS.map(s => `${s.id === "chat" ? '<div class="gap"></div>' : ""}<button type="button" data-act="go" data-sec="${s.id}" aria-current="${ui.sec === s.id ? "page" : "false"}">${ic(s.icon)}${s.name}</button>`).join("")}</nav>
+      <button class="me" type="button" data-act="settings">${mark()}<span>${esc(state.name || "You")}</span><span class="badge">Settings</span></button>`;
+    const sec = SECTIONS.find(s => s.id === ui.sec);
+    const right = ui.sec === "chat" && state.chat.length ? `<button class="round" type="button" data-act="clearChat" aria-label="Clear chat">${ic("trash")}</button>`
+      : ui.sec === "body" ? `<button class="round" type="button" data-act="logBody" aria-label="Log health data">${ic("plus")}</button>`
+      : ui.sec === "reflect" ? `<button class="round" type="button" data-act="settings" aria-label="Settings">${ic("sliders")}</button>` : "";
+    const sub = ui.sub[ui.sec];
+    const views = { body: { today: bodyToday, stats: bodyStats, patterns: () => patternsView(bodyPatterns(), "Once there are two weeks of Health data, Wren points out what moves your sleep, heart and recovery.") },
+      mind: { breath: mindBreath, med: mindMed, patterns: () => patternsView(mindPatterns(), "After a few sessions, Wren will point out what your practice changes for you.") },
+      attn: { today: attnToday, rules: attnRules, analytics: attnAnalytics, patterns: () => patternsView(attnPatterns(), "When your screen time lines up with your sleep, your day or your workouts, it shows up here. Log a few days to start.") },
+      commit: { list: commitList, patterns: () => patternsView(commitPatterns(), "Patterns show up once there's enough of your data to compare.") },
+      reflect: { journal: reflectJournal, insights: reflectInsights, patterns: () => patternsView(reflectPatterns(), "When something in how you feel repeats, it shows up here.") },
+      chat: { undefined: chatView } };
+    $("#main").innerHTML = `
+      <header class="bar"><button class="round menuBtn" type="button" data-act="menu" aria-label="Open menu">${ic("menu")}</button><h1>${sec.name}</h1><div>${right}</div></header>
+      ${state.sample ? `<div class="sampleNote"><span>You're looking at sample data.</span><button type="button" data-act="fresh">Start with my own</button></div>` : ""}
+      ${sec.tabs.length ? `<div class="tabs" role="tablist">${sec.tabs.map(([id, l]) => `<button type="button" role="tab" data-act="tab" data-sub="${id}" aria-selected="${sub === id}">${l}</button>`).join("")}</div>` : '<div style="height:18px"></div>'}
+      ${views[ui.sec][sub]()}`;
+    $("#layer").querySelector(".composer")?.remove();
+    $("#layer").querySelector(".fab")?.remove();
+    if (ui.sec === "chat") {
+      $("#layer").insertAdjacentHTML("beforeend", `<div class="composer"><div class="in"><textarea id="chatIn" rows="1" placeholder="Ask Wren anything…" aria-label="Message Wren"></textarea><button class="btn" type="button" data-act="send" aria-label="Send">${ic("send")}</button></div></div>`);
+      $("#chatIn").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
+      window.scrollTo(0, document.body.scrollHeight);
+    }
+    if (ui.sec === "reflect" && sub === "journal") $("#layer").insertAdjacentHTML("beforeend", `<button class="btn fab" type="button" data-act="write">${ic("pencil")} Write a reflection</button>`);
+  }
+
+  const askLink = q => `<button class="ask" type="button" data-act="ask" data-q="${esc(q)}">${ic("chat")}${esc(q)}</button>`;
+  function noticed({ key, note, headline, feats, primary, secondary }) {
+    const intro = !state.seen[key];
+    return `<section class="card noticed">
+      <div class="band"><div class="note">${mark()}<div style="min-width:0;flex:1"><div class="row" style="flex-wrap:nowrap;gap:0"><b>I noticed something</b><time>${nowTime()}</time></div><p>${esc(note)}</p></div></div></div>
+      ${intro ? `<div class="body"><h2 class="headline">${headline}</h2>
+        ${feats.map(([i, t]) => `<div class="feat"><span class="ic">${ic(i)}</span><span>${t}</span></div>`).join("")}
+        <div class="row">${primary ? `<button class="btn" type="button" data-act="${primary[1]}" ${primary[2] || ""}>${primary[0]}</button>` : ""}
+          ${secondary ? `<button class="btn ${primary ? "text" : "soft block"}" type="button" data-act="seen" data-key="${key}">${secondary}</button>` : ""}</div></div>`
+        : primary ? `<div class="body" style="padding-top:18px"><div class="row"><button class="btn" type="button" data-act="${primary[1]}" ${primary[2] || ""}>${primary[0]}</button></div></div>` : ""}
+    </section>`;
+  }
+  function patternsView(list, emptyText) {
+    if (!list.length) return `<div class="empty"><div class="ic">${ic("pattern")}</div><h3>Patterns appear with time</h3><p>${emptyText}</p>${askLink("Ask Wren what it sees so far").replace('class="ask"', 'class="ask link" style="justify-content:center"')}</div>`;
+    return `<div class="stack">${list.map(p => `<section class="card pat"><p>${esc(p.text)}</p><span class="pill ${p.tone}">${esc(p.pill)}</span>
+      <span class="evid">${p.ev}. Still true as of ${fmtDay(TODAY, { month: "short", day: "numeric" })}</span>
+      <div class="row"><button class="btn soft sm" type="button" data-act="ask" data-q="${esc("Tell me more about this pattern: " + p.text)}">Ask Wren about this</button><button class="btn grey sm" type="button" data-act="notMe" data-id="${p.id}">Not me</button></div></section>`).join("")}</div>`;
+  }
+
+  // ---- Body ----
+  function bodyToday() {
+    const d = bodySorted(), t = bodyOn(TODAY), last = t || d[d.length - 1];
+    if (!last) return `<section class="card stack"><h3>No Health data yet</h3><p class="sub">Log last night's sleep, your steps and heart numbers. Wren builds your statistics and patterns from them.</p><div><button class="btn" type="button" data-act="logBody">Log today</button></div></section>`;
+    const prev = d.filter(x => x.date < last.date).slice(-7);
+    const pace = prev.length ? Math.round(last.steps / avg(prev.map(x => x.steps)) * 100) : null;
+    const week = Array.from({ length: 7 }, (_, i) => bodyOn(addDays(TODAY, i - 6)));
+    return `<div class="stack">
+      <section class="card">
+        ${!t ? `<p class="sub" style="margin-bottom:14px">Showing ${fmtDay(last.date)}. <button class="link" type="button" data-act="logBody">Log today</button></p>` : ""}
+        <div class="metric"><span class="cap">Sleep</span><div class="big">${hm(last.sleepMin)}<small>Sleep score: ${sleepScore(last)}</small></div>${askLink("Was this a good night?")}</div>
+        <div class="metric"><span class="cap">Steps</span><div class="big">${num(last.steps)}${pace ? `<small>${pace}% of recent pace</small>` : ""}</div>${askLink("Am I moving enough?")}</div>
+        <div class="metric"><span class="cap">Heart</span><div class="pair"><div><div class="big">${last.rhr} bpm</div><div class="sub">Resting heart rate</div></div><div><div class="big">${last.hrv} ms</div><div class="sub">HRV</div></div></div>${askLink("What does this say about recovery?")}</div>
+      </section>
+      <span class="cap secLabel">Workouts</span>
+      <section class="card">
+        <h3>${t?.workoutMin ? `${t.workoutType || "Workout"} · ${t.workoutMin} min` : "No workout today"}</h3>
+        <div class="weekbars" aria-label="Workouts this week">${week.map(b => `<i class="${b?.workoutMin ? "on" : ""}" title="${b ? fmtDay(b.date) : ""}"></i>`).join("")}</div>
+        <div class="row between">${askLink("What would help today?")}<button class="btn grey sm" type="button" data-act="logBody">Log workout</button></div>
+      </section></div>`;
+  }
+  const METRICS = {
+    sleep: { label: "Sleep", get: b => b.sleepMin, fmt: v => hm(v), unit: "Average a night", better: 1, delta: v => `${Math.round(v)} min` },
+    steps: { label: "Steps", get: b => b.steps, fmt: v => num(v) + " steps", unit: "Average a day", better: 1, delta: v => num(v) },
+    rhr: { label: "Resting HR", get: b => b.rhr, fmt: v => Math.round(v) + " bpm", unit: "bpm on average", better: -1, delta: v => Math.round(v) + " bpm" },
+    hrv: { label: "HRV", get: b => b.hrv, fmt: v => Math.round(v) + " ms", unit: "ms on average", better: 1, delta: v => Math.round(v) + " ms" },
+    workout: { label: "Workouts", get: b => b.workoutMin, fmt: v => Math.round(v) + " min", unit: "Total minutes", better: 1, delta: v => Math.round(v) + " min", total: true }
+  };
+  function bodyStats() {
+    const R = ui.range, keys = Array.from({ length: R }, (_, i) => addDays(TODAY, i - R + 1));
+    const prevKeys = Array.from({ length: R }, (_, i) => addDays(TODAY, i - 2 * R + 1));
+    const agg = (m, ks) => { const v = ks.map(bodyOn).filter(Boolean).map(METRICS[m].get); return v.length ? (METRICS[m].total ? v.reduce((a, b) => a + b, 0) : avg(v)) : null; };
+    const M = METRICS[ui.metric], vals = keys.map(k => { const b = bodyOn(k); return b ? M.get(b) : null; });
+    const have = vals.filter(v => v !== null);
+    const cur = agg(ui.metric, keys), prev = agg(ui.metric, prevKeys);
+    const delta = cur !== null && prev !== null ? cur - prev : null;
+    const dTone = delta === null || Math.abs(delta) < 0.5 ? "flat" : (delta * M.better > 0 ? "good" : "bad");
+    return `<div class="stack">
+      <div class="seg" role="group" aria-label="Range">${[7, 14, 30, 90].map(r => `<button type="button" data-act="range" data-r="${r}" aria-pressed="${R === r}">${r}D</button>`).join("")}</div>
+      <div class="tiles">${Object.entries(METRICS).map(([k, m]) => { const v = agg(k, keys); return `<button class="tile" type="button" data-act="metric" data-m="${k}" aria-pressed="${ui.metric === k}"><span class="cap">${m.label}</span><span class="v">${v === null ? "–" : m.fmt(v)}</span><span class="sub">${m.unit}</span></button>`; }).join("")}</div>
+      <section class="card chart">
+        <div class="row between"><span class="cap">${M.label}, last ${R} days</span>${delta !== null ? `<span class="pill ${dTone}">${delta > 0 ? "+" : delta < 0 ? "−" : ""}${M.delta(Math.abs(delta))}</span>` : ""}</div>
+        ${have.length ? barChart(vals, keys, ui.metric) : `<p class="sub" style="padding:40px 0;text-align:center">No ${M.label.toLowerCase()} data in this range.</p>`}
+        ${have.length ? `<div class="facts"><div><span>${M.total ? "Total" : "Average"}</span><b>${M.fmt(cur)}</b></div><div><span>Days with data</span><b>${have.length} of ${R}</b></div>
+          <div><span>Lowest</span><b>${M.fmt(Math.min(...have))}</b></div><div><span>Highest</span><b>${M.fmt(Math.max(...have))}</b></div></div>` : ""}
+      </section>
+      ${askLink("How has my " + M.label.toLowerCase() + " changed lately?")}</div>`;
+  }
+  const SCREEN = { label: "Screen time", fmt: v => hm(v) };
+  function barChart(vals, keys, metric) {
+    const MM = METRICS[metric] || SCREEN;
+    const W = 340, H = 220, L = 34, R = 6, T = 12, B = 28;
+    const have = vals.filter(v => v !== null);
+    let max = Math.max(...have, 1), ticks;
+    if (metric === "sleep") { max = Math.max(480, Math.ceil(max / 120) * 120); ticks = [max / 2, max].map(v => [v, v / 60 + "h"]); }
+    else { const step = Math.pow(10, Math.floor(Math.log10(max))); max = Math.ceil(max / step) * step; ticks = [max / 2, max].map(v => [v, v >= 1000 ? (v / 1000) + "k" : String(v)]); }
+    const n = vals.length, slot = (W - L - R) / n, bw = Math.max(2, Math.min(10, slot * .45));
+    const y = v => T + (1 - v / max) * (H - T - B);
+    const every = n <= 7 ? 1 : n <= 14 ? 2 : n <= 30 ? 5 : 15;
+    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${MM.label} by day">
+      ${ticks.map(([v, l]) => `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="0" y="${y(v) + 4}" font-size="11" fill="var(--muted)">${l}</text>`).join("")}
+      <line x1="${L}" x2="${W - R}" y1="${H - B}" y2="${H - B}" stroke="var(--line)"/>
+      ${vals.map((v, i) => { const cx = L + slot * i + slot / 2; return (v ? `<rect x="${cx - bw / 2}" y="${y(v)}" width="${bw}" height="${Math.max(0, H - B - y(v))}" rx="${bw / 2}" fill="var(--accent)"><title>${fmtDay(keys[i])}: ${MM.fmt(v)}</title></rect>` : "")
+        + ((n - 1 - i) % every === 0 ? `<text x="${cx}" y="${H - 8}" text-anchor="middle" font-size="11" fill="var(--muted)">${n <= 14 ? wd(keys[i]) : fmtDay(keys[i], { day: "numeric" })}</text>` : ""); }).join("")}
+    </svg>`;
+  }
+
+  // ---- Mindfulness ----
+  const BREATHS = {
+    box: { name: "Box breathing", why: "For a clear head before a call or a hard decision.", steps: [["Breathe in", 4, 1], ["Hold", 4, 1], ["Breathe out", 4, .55], ["Hold", 4, .55]], shape: "M2,70 L60,10 L120,10 L180,70 L240,70 L300,10 L340,10" },
+    "478": { name: "4-7-8 breathing", why: "To quiet a busy mind and fall asleep faster.", steps: [["Breathe in", 4, 1], ["Hold", 7, 1], ["Breathe out", 8, .55]], shape: "M2,70 L50,10 L130,10 L300,70 L340,40" },
+    coherent: { name: "Coherent breathing", why: "To steady your heart rate when the day runs fast.", steps: [["Breathe in", 5.5, 1], ["Breathe out", 5.5, .55]], shape: "M2,70 C40,70 50,10 90,10 C130,10 140,70 180,70 C220,70 230,10 270,10 C310,10 320,70 340,70" },
+    sigh: { name: "Double sigh", why: "When stress spikes. Two short inhales, one long exhale.", steps: [["Breathe in", 2, .85], ["Top up", 1, 1], ["Long breath out", 6, .55]], shape: "M2,70 L40,25 L60,10 L180,70 L220,25 L240,10 L340,60" }
+  };
+  const MEDS = {
+    relax: { name: "Guided relaxation", why: "To let go of tension when your mind won't slow down.", shape: "M2,40 C45,0 90,0 135,40 S225,80 270,40 S330,10 340,20" },
+    scan: { name: "Body scan", why: "To notice where you hold stress, from head to toe.", shape: "M2,40 C30,20 60,60 90,40 S150,20 180,40 S240,60 270,40 S330,20 340,30" }
+  };
+  function practiceCard(key, p, act) {
+    return `<section class="card practice"><svg class="shape" viewBox="0 0 342 80" preserveAspectRatio="none" aria-hidden="true"><path d="${p.shape}"/></svg>
+      <h2 class="headline">${p.name}</h2><p class="why">${p.why}</p>${act === "med" ? '<span class="cap" style="text-transform:none;letter-spacing:0;font-weight:600">Voice-guided</span>' : ""}
+      <div class="seg white" role="group" aria-label="Length">${[2, 5, 10].map(m => `<button type="button" data-act="dur" data-k="${key}" data-m="${m}" aria-pressed="${ui.dur[key] === m}">${m} min</button>`).join("")}</div>
+      <button class="btn block" type="button" data-act="${act}" data-k="${key}">Start</button></section>`;
+  }
+  function mindNote() {
+    const d = bodySorted(), t = d[d.length - 1], base = d.slice(-15, -1);
+    if (t && base.length >= 5 && t.sleepMin < avg(base.map(b => b.sleepMin)) - 20) return `A shorter night than usual (${hm(t.sleepMin)}). Two minutes of box breathing could take the edge off.`;
+    if (t && base.length >= 5 && t.hrv < avg(base.map(b => b.hrv)) - 4) return "Your HRV is below your normal today. A slow breathing round can help you recover.";
+    const r = state.rules.find(r => r.on);
+    if (r) return `Two minutes of box breathing before ${esc(r.name.toLowerCase())} at ${r.from}?`;
+    return "You haven't taken a breathing break today. Two minutes before your next call?";
+  }
+  function mindBreath() {
+    return `<div class="stack">
+      ${noticed({ key: "mind", note: mindNote(), headline: "A calmer you, in a few minutes.", feats: [["wave", "Four ways to breathe, two to ten minutes"], ["moon", "Guided relaxation, voiced by Wren"], ["heart", "See what each practice does for you"]], primary: ["Breathe for 2 min", "quickBreath"], secondary: "Not now" })}
+      ${Object.entries(BREATHS).map(([k, p]) => practiceCard(k, p, "breathe")).join("")}
+      ${state.sessions.length ? `<section class="card"><span class="cap">Recent sessions</span><div class="list">${state.sessions.slice(-4).reverse().map(s => `<div class="li"><span>${esc(s.kind)}</span><span class="v">${s.min} min · ${fmtDay(s.date)}</span></div>`).join("")}</div></section>` : ""}</div>`;
+  }
+  function mindMed() { return `<div class="stack">${Object.entries(MEDS).map(([k, p]) => practiceCard(k, p, "med")).join("")}</div>`; }
+
+  // ---- Attention ----
+  function activeRule() {
+    const d = new Date(), t = d.toTimeString().slice(0, 5), day = d.getDay();
+    const inRange = (f, to) => f <= to ? t >= f && t < to : t >= f || t < to;
+    const r = state.rules.find(r => r.on && r.days.includes(day) && inRange(r.from, r.to));
+    if (r) return r.name;
+    if (state.night.on && inRange(state.night.from, state.night.to)) return "At night";
+    return null;
+  }
+  function attnToday() {
+    const a = state.attention.find(x => x.date === TODAY);
+    const note = a ? `You picked up your phone ${a.pickups} times today. Want a quiet hour?` : state.attention.length ? `Yesterday you spent ${hm(state.attention[state.attention.length - 1].screenMin)} on screens. Log today's to compare.` : "Log today's screen time and Wren will show where your attention goes.";
+    const act = activeRule();
+    return `<div class="stack">
+      ${noticed({ key: "attn", note, headline: "See where your attention goes.", feats: [["attn", "Screen time and pickups, day by day"], ["lock", "Rules that hold you to your focus times"], ["moon", "A quieter night, on a schedule"]], primary: [a ? "Update today's screen time" : "Log screen time", "logScreen"], secondary: null })}
+      ${act ? `<section class="card row" style="flex-wrap:nowrap">${ic("lock")}<div><h3>${esc(act)} is on</h3><p class="sub">Your blocked apps: ${esc(state.blocked.join(", ") || "none yet")}. Keep them closed until it ends.</p></div></section>` : ""}
+      ${a ? `<section class="card"><div class="pair"><div class="metric"><span class="cap">Screen time</span><div class="big">${hm(a.screenMin)}</div></div><div class="metric"><span class="cap">Pickups</span><div class="big">${a.pickups}</div></div></div>${askLink("How do I cut my pickups?")}</section>` : ""}
+      <p class="sub" style="padding:0 6px">Wren can't read Screen Time or block apps from the browser. Copy your numbers from your phone's Screen Time settings.</p></div>`;
+  }
+  const DAYN = ["S", "M", "T", "W", "T", "F", "S"];
+  function attnRules() {
+    return `<div class="stack">
+      <span class="cap secLabel">Restriction rules</span>
+      <div class="rules">${state.rules.map(r => `<div class="card rule"><div class="row between" style="flex-wrap:nowrap"><h3>${esc(r.name)}</h3><button class="switch" type="button" role="switch" aria-checked="${r.on}" data-act="ruleToggle" data-id="${r.id}" aria-label="Turn ${esc(r.name)} on or off"></button></div>
+          <div><div class="big" style="font-size:20px">${r.from}–${r.to}</div><div class="sub">${r.days.length === 7 ? "Every day" : r.days.map(d => DAYN[d]).join(" ")}</div></div>
+          <button class="link" type="button" data-act="ruleEdit" data-id="${r.id}" style="align-self:flex-start">Edit</button></div>`).join("")}
+        <button class="card rule new" type="button" data-act="ruleEdit">${ic("plus")}New rule</button></div>
+      <span class="cap secLabel">At night</span>
+      <section class="card list" style="padding-block:6px">
+        <div class="li"><span>Quiet night</span><button class="switch" type="button" role="switch" aria-checked="${state.night.on}" data-act="nightToggle" aria-label="Quiet night"></button></div>
+        <div class="li"><label for="nFrom">From</label><input id="nFrom" type="time" value="${state.night.from}" data-set="night.from" class="bare" style="border:0;background:none;color:var(--muted)"></div>
+        <div class="li"><label for="nTo">Until</label><input id="nTo" type="time" value="${state.night.to}" data-set="night.to" style="border:0;background:none;color:var(--muted)"></div></section>
+      <span class="cap secLabel">Emergency unblock</span>
+      <section class="card list" style="padding-block:6px">
+        <div class="li"><label for="ubMin">Unblock for</label><select id="ubMin" class="bare" data-set="unblockMin">${[5, 15, 30, 60].map(m => `<option value="${m}" ${state.unblockMin === m ? "selected" : ""}>${m} min</option>`).join("")}</select></div>
+        <div class="li"><label for="ubUses">Uses per week</label><select id="ubUses" class="bare" data-set="unblockUses">${[0, 1, 2, 3, 5].map(m => `<option value="${m}" ${state.unblockUses === m ? "selected" : ""}>${m === 1 ? "1 time" : m + " times"}</option>`).join("")}</select></div></section>
+      <span class="cap secLabel">Blocked during focus</span>
+      <section class="card stack" style="align-items:center">
+        ${state.blocked.length ? `<div class="chips" style="justify-content:center">${state.blocked.map((b, i) => `<span class="chip">${esc(b)}<button type="button" data-act="unblockApp" data-i="${i}" aria-label="Remove ${esc(b)}">${ic("x").replace('class="i"', 'class="i" style="width:16px;height:16px"')}</button></span>`).join("")}</div>` : ""}
+        <button class="btn soft" type="button" data-act="addApps">${ic("plus")} Add apps</button></section></div>`;
+  }
+  function attnAnalytics() {
+    const span = { week: 7, month: 30, all: 365 }[ui.aRange];
+    const rows = state.attention.filter(a => a.date > addDays(TODAY, -span)).sort((a, b) => a.date < b.date ? -1 : 1);
+    const n = ui.aRange === "all" ? Math.max(7, rows.length ? Math.round((new Date(TODAY) - new Date(rows[0].date)) / 864e5) + 1 : 7) : span;
+    const keys = Array.from({ length: Math.min(n, 90) }, (_, i) => addDays(TODAY, i - Math.min(n, 90) + 1));
+    const vals = keys.map(k => state.attention.find(a => a.date === k)?.screenMin ?? null);
+    const range = `${fmtDay(keys[0], { month: "long", day: "numeric", year: "numeric" })} – ${fmtDay(TODAY, { month: "long", day: "numeric", year: "numeric" })}`;
+    return `<div class="stack"><span class="cap secLabel">Screen time</span>
+      <section class="card chart">
+        <div class="seg" role="group" aria-label="Range">${[["week", "Week"], ["month", "Month"], ["all", "All time"]].map(([k, l]) => `<button type="button" data-act="aRange" data-r="${k}" aria-pressed="${ui.aRange === k}">${l}</button>`).join("")}</div>
+        <p class="sub" style="margin-top:16px">${range}</p>
+        <p class="sub" style="margin-top:8px">Screen time, daily average</p>
+        <div class="big" style="color:var(--accent);font-size:36px">${rows.length ? hm(avg(rows.map(r => r.screenMin))) : "0m"}</div>
+        ${rows.length ? barChart(vals, keys, "screen") + `<div class="facts"><div><span>Pickups a day</span><b>${Math.round(avg(rows.map(r => r.pickups)))}</b></div><div><span>Days logged</span><b>${rows.length}</b></div></div>`
+          : `<p class="sub" style="text-align:center;padding:60px 0">No screen time data yet.</p>`}
+      </section></div>`;
+  }
+
+  // ---- Commitments ----
+  const TEMPLATES = {
+    goal: [
+      { cat: "Health", title: "Run my first race", d: "5K or longer, by a race you pick", step: "First step: 3 easy runs this week" },
+      { cat: "Money", title: "Save for something", d: "Your amount, by your date", step: "First step: move a set amount on payday" },
+      { cat: "Learning", title: "Read 12 books this year", d: "One a month, any kind", step: "First step: pick this month's book tonight" },
+      { cat: "Rest", title: "Sleep 7 hours most nights", d: "5 nights out of 7, for a month", step: "First step: set a wind-down alarm" }
+    ],
+    habit: [
+      { cat: "Rest", title: "Read before bed", d: "After I get into bed", days: "Every day", bad: "On a bad day: one page still counts" },
+      { cat: "Health", title: "Go for a run", d: "After I get up", days: "Mon, Wed, Fri", bad: "On a bad day: walk round the block" },
+      { cat: "Mind", title: "Breathe for two minutes", d: "After my first coffee", days: "Every day", bad: "On a bad day: three slow breaths" },
+      { cat: "People", title: "Message a friend", d: "After lunch", days: "Every day", bad: "On a bad day: send one emoji" }
+    ]
+  };
+  function commitList() {
+    const active = state.commitments;
+    const started = new Set(active.map(c => c.title));
+    const streak = c => { let s = 0, k = c.log.includes(TODAY) ? TODAY : addDays(TODAY, -1); while (c.log.includes(k)) { s++; k = addDays(k, -1); } return s; };
+    const block = (kind, title, sub, icon, tint, tintSoft, info) => `<section class="card">
+      <div class="ctop"><span class="ic" style="background:${tintSoft};color:${tint}">${ic(icon)}</span><h3>${title}</h3><button class="info" type="button" data-act="info" data-k="${kind}" aria-label="About ${title.toLowerCase()}">${ic("info")}</button></div>
+      ${ui.info[kind] ? `<p class="sub" style="margin-top:14px">${info}</p>` : ""}
+      <p class="sub" style="margin-top:16px;font-size:16px">${sub}</p>
+      <div class="carousel">${TEMPLATES[kind].map((t, i) => `<div class="tpl"><span class="cat" style="color:${tint}">${t.cat}</span><h4>${t.title}</h4><span class="d">${t.d}</span>${t.days ? `<span class="d">${t.days}</span>` : ""}
+        <div class="step">${ic(kind === "goal" ? "arrow" : "clock").replace('class="i"', `class="i" style="color:${tint}"`)}<span>${t.step || t.bad}</span></div>
+        <button class="btn sm" type="button" data-act="startTpl" data-kind="${kind}" data-i="${i}" ${started.has(t.title) ? "disabled" : ""}>${started.has(t.title) ? "Started" : "Start this " + kind}</button></div>`).join("")}</div>
+      <button class="btn soft" type="button" data-act="ownCommit" data-kind="${kind}" style="margin-top:18px">${ic("plus")} Set your own ${kind}</button></section>`;
+    return `<div class="stack">
+      ${active.length ? `<span class="cap secLabel">In progress</span><section class="card list" style="padding-block:4px">${active.map(c => `<div class="li"><div class="active-c"><button class="check" type="button" data-act="logCommit" data-id="${c.id}" aria-pressed="${c.log.includes(TODAY)}" aria-label="Done today">${ic("check")}</button>
+        <div><b style="font-weight:600">${esc(c.title)}</b><div class="sub">${c.kind === "habit" ? `${esc(c.when || "")} · ${streak(c)} day streak` : `${esc(c.step || "")} · ${c.log.length} check-ins`}</div></div></div>
+        <button class="close" type="button" data-act="dropCommit" data-id="${c.id}" aria-label="Remove ${esc(c.title)}">${ic("x").replace('class="i"', 'class="i" style="width:16px;height:16px"')}</button></div>`).join("")}</section>` : ""}
+      ${block("goal", "Goals", "Something with a finish line. A few to start from:", "goal", "var(--violet)", "var(--violet-soft)", "A goal ends when you reach it. Wren breaks it into a first step and checks in as you go.")}
+      ${block("habit", "Habits", "Something small, tied to a moment you already have:", "sprout", "var(--accent)", "var(--accent-soft)", "A habit is tied to something you already do, with a smaller version for bad days so the chain doesn't break.")}</div>`;
+  }
+
+  // ---- Reflection ----
+  function reflectNote() {
+    const j = state.journal, p = reflectPatterns()[0];
+    if (j.length >= 3 && p) return `${j.length} entries in, ${p.text.charAt(0).toLowerCase() + p.text.slice(1).replace(/ \(.*\)\.$/, ".")}`;
+    if (j.length) return `Last entry ${fmtDay(j[j.length - 1].at.slice(0, 10), { weekday: "long" })}. Two lines about today?`;
+    return "Two lines is enough. What stood out today?";
+  }
+  function reflectJournal() {
+    const j = [...state.journal].sort((a, b) => a.at < b.at ? 1 : -1);
+    return `<div class="stack">
+      ${noticed({ key: "reflect", note: reflectNote(), headline: "Understand your week, in your own words.", feats: [["pencil", "Two lines a day, whenever you like"], ["reflect", "Your week read back after three days"], ["mind", "Wren spots patterns in how you feel"]], primary: null, secondary: "Got it" })}
+      ${j.length ? `<section class="card">${j.map(e => `<div class="entry"><div class="row between"><time>${fmtDay(e.at.slice(0, 10), { weekday: "short", day: "numeric", month: "short" })} · ${e.at.slice(11, 16)}</time><button class="link" type="button" data-act="delEntry" data-id="${e.id}" style="font-size:13px">Delete</button></div><p>${esc(e.text)}</p></div>`).join("")}</section>` : ""}
+      <div style="height:60px"></div></div>`;
+  }
+  function weekStart() { const d = new Date(TODAY + "T12:00"); const off = (d.getDay() + 6) % 7; return addDays(TODAY, -off); }
+  function reflectInsights() {
+    const ws = weekStart(), days = Array.from({ length: 7 }, (_, i) => addDays(ws, i));
+    const written = new Set(state.journal.map(e => e.at.slice(0, 10)));
+    const count = days.filter(d => written.has(d)).length;
+    const sum = state.summaries[ws];
+    return `<div class="stack">
+      <div class="row between secLabel"><span class="cap">Your week so far</span><span class="sub">${fmtDay(ws)} – ${fmtDay(days[6])}</span></div>
+      <section class="card">
+        ${count >= 3 ? (sum ? `<h3>Your week, read back</h3><p style="margin-top:8px;white-space:pre-wrap">${esc(sum)}</p><button class="link" type="button" data-act="summarise" style="margin-top:10px">Read it again with new entries</button>`
+          : `<h3>Your week is ready to read back</h3><p class="sub" style="margin-top:4px">You wrote on ${count} days. Wren can show what they had in common.</p><button class="btn sm" type="button" data-act="summarise" style="margin-top:14px">Read my week back</button>`)
+          : `<h3>Your summary starts after three days</h3><p class="sub" style="margin-top:4px">Write on any three days and Wren shows what they had in common.</p>`}
+        <div class="days">${days.map(d => `<div><span>${"MTWTFSS"[(new Date(d + "T12:00").getDay() + 6) % 7]}</span><i class="${written.has(d) ? "on" : ""} ${d === TODAY ? "today" : ""} ${d > TODAY ? "future" : ""}">${+d.slice(8)}</i></div>`).join("")}</div>
+      </section></div>`;
+  }
+
+  // ---- Chat ----
+  function chatView() {
+    const msgs = state.chat.length ? state.chat : [{ role: "assistant", content: `Hi${state.name ? " " + state.name : ""}. I can see your sleep, heart, screen time, commitments and journal. Ask me anything about how you're doing.` }];
+    return `<div class="chat" id="chat">${msgs.map(m => `<div class="msg ${m.role === "user" ? "me" : "w"}">${esc(m.content)}</div>`).join("")}</div>
+      ${state.chat.length ? "" : `<div class="chips" style="margin-top:18px">${["How did I sleep this week?", "What's draining my energy?", "Plan a calmer evening for me"].map(q => `<button class="chip" type="button" data-act="ask" data-q="${q}">${q}</button>`).join("")}</div>`}
+      <div style="height:90px"></div>`;
+  }
+  let sampleP = null;
+  const getSample = () => (sampleP ||= (window.claude?.use ? claude.use("sample") : Promise.resolve(null)));
+  function context() {
+    const d = bodySorted().slice(-7);
+    const pats = [...bodyPatterns(), ...mindPatterns(), ...attnPatterns(), ...commitPatterns(), ...reflectPatterns()].map(p => "- " + p.text).join("\n") || "(none yet)";
+    return `You are Wren, a calm personal companion app that helps one person with their body, mindfulness, attention, commitments and reflection. Speak plainly, warmly and briefly: 2–5 short sentences unless asked for more. Use the numbers below and say when you're inferring. Suggest one concrete next step where it helps, and mention a feature in the app when relevant (breathing exercises, rules, habits, journal). Never diagnose; for anything that sounds like a medical or mental-health crisis, suggest a professional or emergency services.
+Name: ${state.name || "(not given)"}. Today: ${new Date().toDateString()}, ${nowTime()}.${state.sample ? " (The data is sample data the person is trying out.)" : ""}
+Health, last 7 days:\n${d.map(b => `${b.date}: slept ${hm(b.sleepMin)} (score ${sleepScore(b)}), ${b.steps} steps, resting HR ${b.rhr}, HRV ${b.hrv} ms${b.workoutMin ? `, ${b.workoutType || "workout"} ${b.workoutMin} min` : ""}`).join("\n") || "(none)"}
+30-day baseline: HRV ${Math.round(baseline().hrv) || "?"} ms, resting HR ${Math.round(baseline().rhr) || "?"} bpm.
+Screen time, recent:\n${state.attention.slice(-7).map(a => `${a.date}: ${hm(a.screenMin)}, ${a.pickups} pickups`).join("\n") || "(none)"}
+Focus rules: ${state.rules.filter(r => r.on).map(r => `${r.name} ${r.from}-${r.to}`).join("; ") || "none"}. Quiet night: ${state.night.on ? state.night.from + "-" + state.night.to : "off"}. Blocked apps: ${state.blocked.join(", ") || "none"}.
+Mindfulness sessions: ${state.sessions.slice(-6).map(s => `${s.date} ${s.kind} ${s.min} min`).join("; ") || "none"}.
+Commitments: ${state.commitments.map(c => `${c.title} (${c.kind}, ${c.log.length} check-ins, last ${c.log[c.log.length - 1] || "never"})`).join("; ") || "none"}.
+Recent journal:\n${state.journal.slice(-6).map(e => `${e.at.replace("T", " ")}: ${e.text.slice(0, 300)}`).join("\n") || "(none)"}
+Patterns found:\n${pats}`;
+  }
+  let busy = false;
+  async function send(text) {
+    const box = $("#chatIn"); text = (text ?? box?.value ?? "").trim();
+    if (!text || busy) return;
+    if (box) box.value = "";
+    state.chat.push({ role: "user", content: text });
+    const reply = { role: "assistant", content: "…" };
+    state.chat.push(reply); render();
+    const sample = await getSample();
+    if (!sample) { reply.content = "I can't reach Claude from this view, so I can't answer here. Open this page on claude.ai while signed in to chat."; render(); return; }
+    busy = true;
+    const turns = state.chat.slice(0, -1).slice(-12);
+    while (turns.length && turns[0].role !== "user") turns.shift();
+    const convo = turns.map(m => ({ role: m.role, content: m.content }));
+    convo[0] = { role: "user", content: context() + "\n\n---\n\n" + convo[0].content };
+    const bubble = () => [...document.querySelectorAll("#chat .msg.w")].pop();
+    try {
+      const { text: out } = await sample(convo, { cache: false, onText: ({ text }) => { reply.content = text; const b = bubble(); if (b) b.textContent = text; window.scrollTo(0, document.body.scrollHeight); } });
+      reply.content = out || reply.content;
+    } catch (e) {
+      reply.content = e?.text || (e?.code === "rate_limited" ? "I need a short pause. Try again in a minute." : e?.code === "not_granted" ? "Chat needs permission to use Claude. Allow it from this page's permissions and try again." : "I couldn't reach Claude just now. Send that again in a moment.");
+    }
+    busy = false; save(); if (ui.sec === "chat") render();
+  }
+
+  // ---------------- sheets ----------------
+  function sheet(html, onMount) {
+    $("#layer").insertAdjacentHTML("beforeend", `<div class="scrim" id="scrim"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`);
+    const s = $("#scrim");
+    s.addEventListener("click", e => { if (e.target === s || e.target.closest("[data-close]")) closeSheet(); });
+    onMount?.(s); s.querySelector("input,textarea,select,button")?.focus();
+  }
+  const closeSheet = () => $("#scrim")?.remove();
+  const sheetHead = t => `<div class="row between"><h3 style="font-size:20px">${t}</h3><button class="close" type="button" data-close aria-label="Close">${ic("x")}</button></div>`;
+
+  function logBodySheet() {
+    const t = bodyOn(TODAY) || {};
+    sheet(`${sheetHead("Log health data")}
+      <p class="sub">Copy these from the Health app or your watch. Sleep is last night's.</p>
+      <div class="field"><label for="bDate">Day</label><input id="bDate" type="date" value="${TODAY}" max="${TODAY}"></div>
+      <div class="grid2"><div class="field"><label for="bSh">Sleep hours</label><input id="bSh" type="number" min="0" max="16" inputmode="numeric" value="${t.sleepMin ? Math.floor(t.sleepMin / 60) : ""}"></div>
+        <div class="field"><label for="bSm">Minutes</label><input id="bSm" type="number" min="0" max="59" inputmode="numeric" value="${t.sleepMin ? t.sleepMin % 60 : ""}"></div></div>
+      <div class="grid2"><div class="field"><label for="bSteps">Steps</label><input id="bSteps" type="number" min="0" inputmode="numeric" value="${t.steps ?? ""}"></div>
+        <div class="field"><label for="bScore">Sleep score (optional)</label><input id="bScore" type="number" min="1" max="100" inputmode="numeric" value="${t.sleepScore ?? ""}"></div></div>
+      <div class="grid2"><div class="field"><label for="bRhr">Resting HR (bpm)</label><input id="bRhr" type="number" min="30" max="120" inputmode="numeric" value="${t.rhr ?? ""}"></div>
+        <div class="field"><label for="bHrv">HRV (ms)</label><input id="bHrv" type="number" min="5" max="250" inputmode="numeric" value="${t.hrv ?? ""}"></div></div>
+      <div class="grid2"><div class="field"><label for="bWt">Workout</label><select id="bWt">${["", "Cardio", "Strength", "Yoga", "Sport", "Walk"].map(w => `<option value="${w}" ${t.workoutType === w ? "selected" : ""}>${w || "None"}</option>`).join("")}</select></div>
+        <div class="field"><label for="bWm">Minutes</label><input id="bWm" type="number" min="0" max="600" inputmode="numeric" value="${t.workoutMin || ""}"></div></div>
+      <p class="sub" id="bErr" hidden style="color:var(--bad)"></p>
+      <button class="btn block" type="button" id="bSave">Save</button>`, s => {
+      $("#bDate", s).onchange = () => { const b = bodyOn($("#bDate", s).value); if (b) { $("#bSh", s).value = Math.floor(b.sleepMin / 60); $("#bSm", s).value = b.sleepMin % 60; $("#bSteps", s).value = b.steps; $("#bRhr", s).value = b.rhr; $("#bHrv", s).value = b.hrv; $("#bWt", s).value = b.workoutType || ""; $("#bWm", s).value = b.workoutMin || ""; $("#bScore", s).value = b.sleepScore || ""; } };
+      $("#bSave", s).onclick = () => {
+        const v = id => $(id, s).value === "" ? null : +$(id, s).value;
+        const sleepMin = (v("#bSh") ?? 0) * 60 + (v("#bSm") ?? 0);
+        const err = $("#bErr", s);
+        if (!sleepMin || v("#bSteps") === null || !v("#bRhr") || !v("#bHrv")) { err.hidden = false; err.textContent = "Add sleep, steps, resting heart rate and HRV. Workout and score are optional."; return; }
+        goReal();
+        const date = $("#bDate", s).value || TODAY;
+        state.body = state.body.filter(b => b.date !== date);
+        state.body.push({ date, sleepMin, steps: v("#bSteps"), rhr: v("#bRhr"), hrv: v("#bHrv"), sleepScore: v("#bScore") || undefined, workoutMin: v("#bWm") || 0, workoutType: (v("#bWm") ? $("#bWt", s).value || "Workout" : "") });
+        save(); closeSheet(); toast("Saved"); render();
+      };
+    });
+  }
+  function logScreenSheet() {
+    const a = state.attention.find(x => x.date === TODAY) || {};
+    sheet(`${sheetHead("Log screen time")}
+      <p class="sub">On iPhone: Settings › Screen Time › See All App & Website Activity.</p>
+      <div class="field"><label for="sDate">Day</label><input id="sDate" type="date" value="${TODAY}" max="${TODAY}"></div>
+      <div class="grid2"><div class="field"><label for="sH">Screen time hours</label><input id="sH" type="number" min="0" max="24" inputmode="numeric" value="${a.screenMin ? Math.floor(a.screenMin / 60) : ""}"></div>
+      <div class="field"><label for="sM">Minutes</label><input id="sM" type="number" min="0" max="59" inputmode="numeric" value="${a.screenMin ? a.screenMin % 60 : ""}"></div></div>
+      <div class="field"><label for="sP">Pickups</label><input id="sP" type="number" min="0" inputmode="numeric" value="${a.pickups ?? ""}"></div>
+      <button class="btn block" type="button" id="sSave">Save</button>`, s => {
+      $("#sSave", s).onclick = () => {
+        const m = (+$("#sH", s).value || 0) * 60 + (+$("#sM", s).value || 0), p = +$("#sP", s).value || 0;
+        if (!m && !p) { toast("Add your screen time or pickups"); return; }
+        goReal();
+        const date = $("#sDate", s).value || TODAY;
+        state.attention = state.attention.filter(x => x.date !== date); state.attention.push({ date, screenMin: m, pickups: p });
+        save(); closeSheet(); toast("Saved"); render();
+      };
+    });
+  }
+  function ruleSheet(id) {
+    const r = state.rules.find(x => x.id === id) || { name: "", from: "09:00", to: "11:00", days: [1, 2, 3, 4, 5], on: true };
+    let days = [...r.days];
+    sheet(`${sheetHead(id ? "Edit rule" : "New rule")}
+      <div class="field"><label for="rName">Name</label><input id="rName" value="${esc(r.name)}" placeholder="e.g. Deep work"></div>
+      <div class="grid2"><div class="field"><label for="rFrom">From</label><input id="rFrom" type="time" value="${r.from}"></div><div class="field"><label for="rTo">Until</label><input id="rTo" type="time" value="${r.to}"></div></div>
+      <div class="field"><span class="lab">Days</span><div class="chips" id="rDays">${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d, i) => `<button class="chip" type="button" data-d="${i}" aria-pressed="${days.includes(i)}">${d}</button>`).join("")}</div></div>
+      <p class="sub">While a rule is on, Wren shows a reminder to keep your blocked apps closed.</p>
+      <div class="row"><button class="btn" type="button" id="rSave">Save rule</button>${id ? '<button class="btn text" type="button" id="rDel" style="color:var(--bad)">Delete</button>' : ""}</div>`, s => {
+      s.querySelectorAll("[data-d]").forEach(b => b.onclick = () => { const d = +b.dataset.d; days = days.includes(d) ? days.filter(x => x !== d) : [...days, d].sort(); b.setAttribute("aria-pressed", days.includes(d)); });
+      $("#rSave", s).onclick = () => {
+        const name = $("#rName", s).value.trim() || "Focus";
+        if (!days.length) { toast("Pick at least one day"); return; }
+        if (state.sample) state.sample = false;
+        const nr = { id: id || "r" + uid(), name, from: $("#rFrom", s).value, to: $("#rTo", s).value, days, on: r.on };
+        state.rules = id ? state.rules.map(x => x.id === id ? nr : x) : [...state.rules, nr];
+        save(); closeSheet(); render();
+      };
+      $("#rDel", s) && ($("#rDel", s).onclick = () => { state.rules = state.rules.filter(x => x.id !== id); save(); closeSheet(); render(); });
+    });
+  }
+  function addAppsSheet() {
+    const common = ["Instagram", "TikTok", "YouTube", "X", "Facebook", "Reddit", "News", "Email", "Slack", "Games"];
+    sheet(`${sheetHead("Blocked during focus")}
+      <div class="chips" id="appChips">${common.map(a => `<button class="chip" type="button" data-app="${a}" aria-pressed="${state.blocked.includes(a)}">${a}</button>`).join("")}</div>
+      <div class="field"><label for="appOther">Another app</label><div class="row" style="flex-wrap:nowrap"><input id="appOther" placeholder="App name"><button class="btn sm" type="button" id="appAdd">Add</button></div></div>
+      <button class="btn block" type="button" data-close>Done</button>`, s => {
+      s.querySelectorAll("[data-app]").forEach(b => b.onclick = () => { const a = b.dataset.app; state.blocked = state.blocked.includes(a) ? state.blocked.filter(x => x !== a) : [...state.blocked, a]; b.setAttribute("aria-pressed", state.blocked.includes(a)); save(); render(); });
+      $("#appAdd", s).onclick = () => { const a = $("#appOther", s).value.trim().slice(0, 30); if (a && !state.blocked.includes(a)) { state.blocked.push(a); save(); render(); toast("Added " + a); } $("#appOther", s).value = ""; };
+    });
+  }
+  const PROMPTS = ["What took your energy today, and what gave some back?", "What's one thing you'd like to remember about today?", "What's on your mind right now?", "What went better than you expected?"];
+  function writeSheet() {
+    const prompt = PROMPTS[new Date().getDate() % PROMPTS.length];
+    sheet(`${sheetHead("Write a reflection")}
+      <p class="sub">${prompt}</p>
+      <div class="field"><label for="jText">Two lines is enough</label><textarea id="jText" rows="5"></textarea></div>
+      <button class="btn block" type="button" id="jSave">Save reflection</button>`, s => {
+      $("#jSave", s).onclick = () => {
+        const text = $("#jText", s).value.trim(); if (!text) { toast("Write a line first"); return; }
+        goReal();
+        const d = new Date(); state.journal.push({ id: "j" + uid(), at: TODAY + "T" + d.toTimeString().slice(0, 5), text: text.slice(0, 4000) });
+        save(); closeSheet(); toast("Saved"); go("reflect", "journal");
+      };
+    });
+  }
+  function ownCommitSheet(kind) {
+    sheet(`${sheetHead(kind === "goal" ? "Set your own goal" : "Set your own habit")}
+      <div class="field"><label for="cTitle">${kind === "goal" ? "What do you want to reach?" : "What do you want to do?"}</label><input id="cTitle" placeholder="${kind === "goal" ? "e.g. Swim 1 km without stopping" : "e.g. Stretch for five minutes"}"></div>
+      <div class="field"><label for="cCat">Area</label><select id="cCat">${["Health", "Rest", "Mind", "People", "Money", "Learning", "Work"].map(c => `<option>${c}</option>`).join("")}</select></div>
+      <div class="field"><label for="cA">${kind === "goal" ? "First step" : "Tied to which moment?"}</label><input id="cA" placeholder="${kind === "goal" ? "e.g. Two pool sessions this week" : "e.g. After I brush my teeth"}"></div>
+      ${kind === "habit" ? '<div class="field"><label for="cB">On a bad day</label><input id="cB" placeholder="e.g. One stretch still counts"></div>' : ""}
+      <button class="btn block" type="button" id="cSave">Start this ${kind}</button>`, s => {
+      $("#cSave", s).onclick = () => {
+        const title = $("#cTitle", s).value.trim(); if (!title) { toast("Give it a name"); return; }
+        if (state.sample) state.sample = false;
+        state.commitments.push({ id: "c" + uid(), kind, cat: $("#cCat", s).value, title, step: kind === "goal" ? $("#cA", s).value.trim() : "", when: kind === "habit" ? $("#cA", s).value.trim() : "", bad: $("#cB", s)?.value.trim() || "", log: [] });
+        save(); closeSheet(); toast("Started"); render();
+      };
+    });
+  }
+  function sensesSheet() {
+    sheet(`${sheetHead("Senses")}
+      <p class="sub">Senses are what Wren learns from. In the browser you add them yourself; a sense counts as connected when it has recent data.</p>
+      <div class="list">${senses().map(s => `<div class="li"><div><b style="font-weight:600">${s.name}</b><div class="sub">${s.desc}</div></div><button class="btn ${s.on ? "grey" : ""} sm" type="button" data-act="${s.act}">${s.on ? "Update" : "Add"}</button></div>`).join("")}</div>`);
+  }
+  function settingsSheet() {
+    sheet(`${sheetHead("Settings")}
+      <div class="field"><label for="setName">Your name</label><input id="setName" value="${esc(state.name)}" placeholder="What should Wren call you?"></div>
+      <button class="btn" type="button" id="setSave">Save</button>
+      <p class="sub">Your data is private to you. When you're signed in to claude.ai it's kept in a store only you can read; otherwise it stays in this browser.</p>
+      <div class="row">${state.sample ? '<button class="btn soft" type="button" data-act="fresh">Clear sample data</button>' : ""}<button class="btn text" type="button" id="wipe" style="color:var(--bad)">Erase all my data</button></div>`, s => {
+      $("#setSave", s).onclick = () => { state.name = $("#setName", s).value.trim().slice(0, 40); save(); closeSheet(); toast("Saved"); render(); };
+      const w = $("#wipe", s); w.onclick = () => { if (w.dataset.armed) { state = emptyState(); save(); closeSheet(); toast("All data erased"); render(); return; } w.dataset.armed = 1; w.textContent = "Tap again to erase everything"; };
+    });
+  }
+
+  // ---------------- sessions ----------------
+  let timer = null, speaking = false;
+  function endOverlay() { clearTimeout(timer); timer = null; try { speechSynthesis.cancel(); } catch {} $("#ov")?.remove(); }
+  function logSession(kind, min) { if (min < 1) return; state.sessions.push({ date: TODAY, kind, min: Math.round(min) }); save(); toast(`${Math.round(min)} min of ${kind.toLowerCase()} saved`); }
+  function startBreath(key, mins) {
+    const p = BREATHS[key], total = mins * 60000, t0 = Date.now();
+    $("#layer").insertAdjacentHTML("beforeend", `<div class="overlay" id="ov" role="dialog" aria-label="${p.name}">
+      <div class="row between" style="width:100%;max-width:520px"><span class="cap">${p.name}</span><span class="sub" id="ovLeft" style="font-variant-numeric:tabular-nums"></span></div>
+      <div class="orbit" id="orb"><div><div class="phase" id="ph">Get comfortable</div><div class="sub" id="cnt" style="font-variant-numeric:tabular-nums"></div></div></div>
+      <button class="btn grey" type="button" id="ovStop" style="min-width:160px">End</button></div>`);
+    const orb = $("#orb");
+    const finish = done => { const m = (Date.now() - t0) / 60000; endOverlay(); logSession(p.name, done ? mins : m); render(); };
+    $("#ovStop").onclick = () => finish(false);
+    const left = () => { const r = Math.max(0, total - (Date.now() - t0)); $("#ovLeft") && ($("#ovLeft").textContent = `${Math.floor(r / 60000)}:${String(Math.floor(r / 1000) % 60).padStart(2, "0")}`); };
+    function step(i) {
+      if (!$("#ov")) return;
+      if (Date.now() - t0 >= total) { $("#ph").textContent = "Nicely done"; $("#cnt").textContent = ""; orb.style.transitionDuration = "1.5s"; orb.style.transform = "scale(.7)"; timer = setTimeout(() => finish(true), 1800); return; }
+      const [label, secs, sc] = p.steps[i % p.steps.length];
+      $("#ph").textContent = label; orb.style.transitionDuration = secs + "s"; orb.style.transform = `scale(${sc})`;
+      let n = Math.ceil(secs); $("#cnt").textContent = n; left();
+      const tick = () => { if (!$("#ov")) return; n--; left(); if (n > 0) { $("#cnt").textContent = n; timer = setTimeout(tick, 1000); } else step(i + 1); };
+      timer = setTimeout(tick, secs * 1000 / Math.ceil(secs));
+    }
+    left(); timer = setTimeout(() => step(0), 1500);
+  }
+  const SCRIPTS = {
+    relax: ["Find a comfortable position and let your eyes close, or rest them on one spot.", "Breathe in slowly through your nose. And let it go.", "Notice where your body touches the chair or the bed. Let it take your weight.", "Soften your forehead. Let your jaw hang loose.", "Let your shoulders drop away from your ears.", "With each breath out, let a little more tension go.", "If your mind wanders, that's fine. Come back to the next breath.", "Feel your hands. Let them be heavy and warm.", "Your belly rises as you breathe in, and falls as you breathe out.", "There's nothing you need to do right now.", "Let your legs grow heavy, all the way down to your feet.", "Take one more slow breath in. And out.", "When you're ready, open your eyes and come back to the room."],
+    scan: ["Settle in and take three slow breaths.", "Bring your attention to the top of your head. Just notice what's there.", "Move down to your forehead, your eyes, your jaw. Let them soften.", "Notice your neck and shoulders. Breathe into any tightness.", "Move down your arms to your hands and fingertips.", "Notice your chest rising and falling.", "Bring your attention to your belly. Let it be soft.", "Notice your lower back. Let it rest.", "Move down to your hips and your legs.", "Notice your knees, your calves, your ankles.", "Finally your feet, all the way to your toes.", "Now feel your whole body at once, breathing.", "Take one more deep breath, and when you're ready, open your eyes."]
+  };
+  function startMed(key, mins) {
+    const p = MEDS[key], lines = SCRIPTS[key], total = mins * 60000, gap = total / lines.length, t0 = Date.now();
+    $("#layer").insertAdjacentHTML("beforeend", `<div class="overlay" id="ov" role="dialog" aria-label="${p.name}">
+      <div class="row between" style="width:100%;max-width:520px"><span class="cap">${p.name}</span><button class="link" type="button" id="ovVoice">Voice on</button></div>
+      <div style="display:grid;gap:30px;justify-items:center"><div class="orbit" id="orb" style="transform:scale(.6);transition-duration:5s"></div><p class="caption" id="cap" aria-live="polite"></p></div>
+      <button class="btn grey" type="button" id="ovStop" style="min-width:160px">End</button></div>`);
+    let voice = "speechSynthesis" in window, i = 0, breathe = true;
+    const vb = $("#ovVoice"); if (!voice) vb.hidden = true;
+    vb.onclick = () => { voice = !voice; vb.textContent = voice ? "Voice on" : "Voice off"; if (!voice) try { speechSynthesis.cancel(); } catch {} };
+    const finish = done => { endOverlay(); logSession(p.name, done ? mins : (Date.now() - t0) / 60000); render(); };
+    $("#ovStop").onclick = () => finish(false);
+    const pulse = setInterval(() => { const o = $("#orb"); if (!o) return clearInterval(pulse); o.style.transform = `scale(${breathe ? .85 : .6})`; breathe = !breathe; }, 5000);
+    function say() {
+      if (!$("#ov")) return;
+      if (i >= lines.length) { timer = setTimeout(() => finish(true), 4000); return; }
+      $("#cap").textContent = lines[i];
+      if (voice) { try { const u = new SpeechSynthesisUtterance(lines[i]); u.rate = .85; u.pitch = 1; speechSynthesis.speak(u); } catch {} }
+      i++; timer = setTimeout(say, gap);
+    }
+    say();
+  }
+
+  // ---------------- summaries ----------------
+  async function summarise() {
+    const ws = weekStart(), entries = state.journal.filter(e => e.at.slice(0, 10) >= ws);
+    const sample = await getSample();
+    if (!sample) { toast("Reading back your week needs Claude, which this view can't reach"); return; }
+    state.summaries[ws] = "Reading your week…"; render();
+    try {
+      const { text } = await sample(`You are Wren, a calm companion app. Read back this person's journal for the week in 3–4 short sentences: what the days had in common, what seemed to help, and one gentle suggestion. Speak to them as "you". Don't invent details.\n\n${entries.map(e => `${e.at.replace("T", " ")}: ${e.text}`).join("\n")}`, { cache: false, onText: ({ text }) => { state.summaries[ws] = text; const el = document.querySelector(".card h3 + p"); if (el) el.textContent = text; } });
+      state.summaries[ws] = text;
+    } catch (e) { delete state.summaries[ws]; toast(e?.code === "rate_limited" ? "Too many requests. Try again in a minute." : "Couldn't read your week back. Try again."); }
+    save(); render();
+  }
+
+  // ---------------- actions ----------------
+  const A = {
+    menu: () => document.body.classList.add("open"),
+    go: b => go(b.dataset.sec),
+    tab: b => go(ui.sec, b.dataset.sub),
+    senses: () => { document.body.classList.remove("open"); sensesSheet(); },
+    settings: () => { document.body.classList.remove("open"); closeSheet(); settingsSheet(); },
+    fresh: () => { closeSheet(); state = Object.assign(emptyState(), { name: state.name }); save(); toast("Sample data cleared"); render(); },
+    ask: b => { closeSheet(); go("chat"); send(b.dataset.q); },
+    send: () => send(),
+    clearChat: () => { state.chat = []; save(); render(); },
+    logBody: () => { closeSheet(); logBodySheet(); },
+    logScreen: () => { closeSheet(); logScreenSheet(); },
+    write: () => { closeSheet(); writeSheet(); },
+    range: b => { ui.range = +b.dataset.r; render(); },
+    metric: b => { ui.metric = b.dataset.m; render(); },
+    aRange: b => { ui.aRange = b.dataset.r; render(); },
+    notMe: b => { state.dismissed.push(b.dataset.id); save(); toast("Got it. Wren won't show that one again."); render(); },
+    seen: b => { state.seen[b.dataset.key] = true; save(); render(); },
+    dur: b => { ui.dur[b.dataset.k] = +b.dataset.m; render(); },
+    breathe: b => startBreath(b.dataset.k, ui.dur[b.dataset.k]),
+    quickBreath: () => startBreath("box", 2),
+    med: b => startMed(b.dataset.k, ui.dur[b.dataset.k]),
+    ruleToggle: b => { const r = state.rules.find(x => x.id === b.dataset.id); r.on = !r.on; save(); render(); },
+    ruleEdit: b => ruleSheet(b.dataset.id),
+    nightToggle: () => { state.night.on = !state.night.on; save(); render(); },
+    addApps: () => addAppsSheet(),
+    unblockApp: b => { state.blocked.splice(+b.dataset.i, 1); save(); render(); },
+    info: b => { ui.info[b.dataset.k] = !ui.info[b.dataset.k]; render(); },
+    startTpl: b => { const t = TEMPLATES[b.dataset.kind][+b.dataset.i]; state.commitments.push({ id: "c" + uid(), kind: b.dataset.kind, cat: t.cat, title: t.title, step: t.step ? t.step.replace("First step: ", "") : "", when: t.d, bad: t.bad || "", log: [] }); save(); toast("Started: " + t.title); render(); },
+    ownCommit: b => ownCommitSheet(b.dataset.kind),
+    logCommit: b => { const c = state.commitments.find(x => x.id === b.dataset.id); c.log = c.log.includes(TODAY) ? c.log.filter(k => k !== TODAY) : [...c.log, TODAY]; save(); render(); },
+    dropCommit: b => { state.commitments = state.commitments.filter(x => x.id !== b.dataset.id); save(); render(); },
+    delEntry: b => { state.journal = state.journal.filter(e => e.id !== b.dataset.id); save(); render(); },
+    summarise: () => summarise()
+  };
+  document.addEventListener("click", e => {
+    const b = e.target.closest("[data-act]"); if (!b || b.disabled) return;
+    A[b.dataset.act]?.(b);
+  });
+  document.addEventListener("change", e => {
+    const el = e.target.closest("[data-set]"); if (!el) return;
+    const path = el.dataset.set.split("."), v = el.type === "time" ? el.value : +el.value;
+    if (path.length === 2) state[path[0]][path[1]] = v; else state[path[0]] = v;
+    save();
+  });
+  $("#shield").onclick = () => document.body.classList.remove("open");
+  document.addEventListener("keydown", e => { if (e.key === "Escape") { if ($("#ov")) endOverlay(); else if ($("#scrim")) closeSheet(); else document.body.classList.remove("open"); } });
+  matchMedia("(min-width: 900px)").addEventListener?.("change", render);
+
+  render();
+})();
+</script>
+</body></html>
